@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stocks &amp; Flows — Interactive Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="chart.umd.min.js"></script>
+<style>
+  :root{
+    --ink:#13241f; --forest:#0f3d36; --forest-2:#1a5b50; --teal:#2a8c7d;
+    --moss:#7fb069; --sand:#f4efe6; --paper:#fbf9f4; --card:#ffffff; --line:#e3ddd0;
+    --inflow:#2a8c7d; --outflow:#c2622d; --amber:#d99c2b; --muted:#5f6b64;
+    --atmos:#3d8fa8; --ocean:#1b6e8c; --land:#5f9140; --fossil:#7a5a3c;
+    --shadow:0 1px 2px rgba(19,36,31,.05),0 8px 30px rgba(19,36,31,.07);
+    --radius:16px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--paper);color:var(--ink);
+    font-family:'Inter',system-ui,sans-serif;line-height:1.6;-webkit-font-smoothing:antialiased}
+  h1,h2,h3,.serif{font-family:'Fraunces',Georgia,serif;font-weight:600;letter-spacing:-.01em}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 24px}
+  a{color:var(--teal)}
+
+  /* ---------- Sticky nav ---------- */
+  nav.bar{position:sticky;top:0;z-index:40;background:rgba(251,249,244,.92);
+    backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+  nav.bar .wrap{display:flex;align-items:center;gap:6px;height:56px}
+  nav .brand{font-family:'Fraunces',serif;font-weight:600;color:var(--forest);margin-right:auto;font-size:1.05rem}
+  nav a.navlink{color:var(--forest-2);text-decoration:none;font-size:.84rem;font-weight:600;
+    padding:7px 12px;border-radius:999px;transition:.15s;white-space:nowrap}
+  nav a.navlink:hover{background:var(--sand)}
+  nav a.navlink.active{background:var(--forest);color:#fff}
+
+  /* ---------- Header ---------- */
+  header.hero{background:linear-gradient(155deg,#0c352f 0%,#103f37 45%,#185447 100%);
+    color:#f3efe6;padding:54px 0 50px;position:relative;overflow:hidden}
+  header.hero::after{content:"";position:absolute;inset:0;pointer-events:none;
+    background:radial-gradient(900px 380px at 82% -10%,rgba(127,176,105,.20),transparent 60%)}
+  .eyebrow{font-size:.78rem;letter-spacing:.18em;text-transform:uppercase;color:#9fd6c4;font-weight:600;margin:0 0 14px}
+  header.hero h1{font-size:3rem;line-height:1.04;margin:0 0 14px;color:#fcfaf4}
+  header.hero h1 em{font-style:italic;color:#bfe3cf}
+  .lede{max-width:640px;font-size:1.1rem;color:#dce8df;margin:0 0 6px}
+  .crumb{margin-top:18px;font-size:.85rem;color:#8fc3b2}
+
+  /* ---------- Section scaffolding ---------- */
+  section{padding:60px 0;scroll-margin-top:64px}
+  .sec-num{font-size:.78rem;letter-spacing:.16em;text-transform:uppercase;color:var(--teal);font-weight:700;margin:0 0 8px}
+  section h2{font-size:2rem;margin:0 0 12px;color:var(--forest)}
+  .sub{max-width:720px;color:var(--muted);font-size:1.04rem;margin:0 0 30px}
+  .alt{background:var(--sand)}
+
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+
+  /* ---------- Tool 1 simulator ---------- */
+  .sim{display:grid;grid-template-columns:340px 1fr;gap:26px;align-items:start}
+  .stage{padding:24px;display:flex;flex-direction:column;align-items:center}
+  svg.tub{width:100%;max-width:280px;height:auto;display:block}
+  .readout{margin-top:8px;text-align:center}
+  .readout .big{font-family:'Fraunces',serif;font-size:2.4rem;font-weight:600;color:var(--forest);line-height:1}
+  .readout .unit{font-size:.95rem;color:var(--muted)}
+  .readout .second{font-size:.85rem;color:var(--muted);margin-top:2px;min-height:1em}
+  .reflegend{display:inline-flex;align-items:center;gap:7px;margin-top:10px;font-size:.78rem;
+    color:#a67611;background:#fdf6e6;border:1px solid #f0e0b8;border-radius:999px;padding:4px 11px}
+  .reflegend .dash{width:16px;height:0;border-top:2px dashed var(--amber);display:inline-block}
+
+  .controls{padding:24px}
+  .tabs{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px}
+  .stab{border:1px solid var(--line);background:#fff;color:var(--forest-2);padding:8px 13px;border-radius:999px;
+    font-family:inherit;font-size:.82rem;font-weight:600;cursor:pointer;transition:.15s}
+  .stab:hover{border-color:var(--teal)}
+  .stab.active{background:var(--forest);color:#fff;border-color:var(--forest)}
+  .scen-desc{font-size:.92rem;color:var(--muted);background:var(--sand);border-left:3px solid var(--teal);
+    padding:12px 14px;border-radius:8px;margin-bottom:22px}
+  .scen-desc .cite{display:block;margin-top:6px;font-size:.78rem;color:#8a948d}
+
+  .sliderrow{margin-bottom:18px}
+  .sliderrow .lab{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:7px}
+  .sliderrow .lab .name{font-weight:600;font-size:.9rem;display:flex;align-items:center;gap:8px}
+  .dot{width:11px;height:11px;border-radius:3px;display:inline-block}
+  .dot.in{background:var(--inflow)} .dot.out{background:var(--outflow)}
+  .sliderrow .lab .val{font-family:'Fraunces',serif;font-weight:600;font-size:1.02rem;color:var(--ink)}
+  input[type=range]{width:100%;-webkit-appearance:none;appearance:none;height:6px;border-radius:6px;background:var(--line);outline:none}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:50%;
+    cursor:pointer;border:3px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.25);background:var(--teal)}
+  input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;cursor:pointer;border:3px solid #fff;background:var(--teal)}
+  input[type=range].in::-webkit-slider-thumb{background:var(--inflow)}
+  input[type=range].out::-webkit-slider-thumb{background:var(--outflow)}
+  input[type=range].in::-moz-range-thumb{background:var(--inflow)}
+  input[type=range].out::-moz-range-thumb{background:var(--outflow)}
+
+  .net{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;background:var(--sand);
+    border-radius:10px;padding:13px;margin:4px 0 20px;font-size:.95rem}
+  .net b{font-family:'Fraunces',serif}
+  .rising{color:var(--inflow)} .falling{color:var(--outflow)} .steady{color:var(--muted)}
+  .verdict{font-weight:700}
+
+  .btns{display:flex;gap:10px}
+  .btn{flex:1;border:none;border-radius:10px;padding:12px;font-family:inherit;font-weight:600;font-size:.92rem;cursor:pointer;transition:.15s}
+  .btn.primary{background:var(--forest);color:#fff} .btn.primary:hover{background:var(--forest-2)}
+  .btn.ghost{background:#fff;color:var(--forest);border:1px solid var(--line)} .btn.ghost:hover{border-color:var(--teal)}
+
+  .chartwrap{padding:22px 24px 26px;margin-top:26px}
+  .chartwrap h3{margin:0 0 4px;font-size:1.12rem;color:var(--forest)}
+  .chartwrap .hint{font-size:.85rem;color:var(--muted);margin:0 0 14px}
+  .chartbox{position:relative;height:300px}
+
+  /* ---------- Tool 2 carbon sandbox ---------- */
+  .cc{display:grid;grid-template-columns:1.25fr 1fr;gap:26px;align-items:start}
+  .ccdiagram{padding:18px}
+  svg.cyc{width:100%;height:auto;display:block}
+  .box-val{font-family:'Fraunces',serif;font-weight:600}
+  .presets{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px}
+  .preset{border:1px solid var(--line);background:#fff;color:var(--forest-2);padding:7px 12px;border-radius:999px;
+    font-family:inherit;font-size:.8rem;font-weight:600;cursor:pointer;transition:.15s}
+  .preset:hover{border-color:var(--teal)}
+  .preset.active{background:var(--forest);color:#fff;border-color:var(--forest)}
+  .ccstat{display:flex;justify-content:space-between;align-items:center;background:var(--sand);border-radius:10px;
+    padding:12px 15px;margin-bottom:18px}
+  .ccstat .y{font-family:'Fraunces',serif;font-weight:600;font-size:1.05rem;color:var(--forest)}
+  .ccstat .ppm{font-family:'Fraunces',serif;font-weight:600;font-size:1.5rem}
+  .flowrow .lab .name{gap:9px}
+  .legendkey{display:flex;flex-wrap:wrap;gap:14px;font-size:.78rem;color:var(--muted);margin-top:10px}
+  .legendkey span{display:inline-flex;align-items:center;gap:6px}
+  .legendkey i{width:18px;height:4px;border-radius:2px;display:inline-block}
+
+  /* ---------- Tool 3 feedback ---------- */
+  .fbtool{display:grid;grid-template-columns:1fr 1fr;gap:26px;align-items:start}
+  .fbloopwrap{padding:24px;display:flex;flex-direction:column;align-items:center}
+  svg.loop{width:100%;max-width:360px;height:auto}
+  .fbreadout{margin-top:12px;text-align:center;width:100%}
+  .fbreadout .big{font-family:'Fraunces',serif;font-size:2.2rem;font-weight:600;color:var(--forest);line-height:1}
+  .fbmetric{display:inline-block;margin-top:10px;font-size:.85rem;background:var(--sand);border-radius:999px;padding:6px 14px;color:var(--forest-2);font-weight:600}
+  .domtag{margin-top:10px;font-size:.82rem;font-weight:600}
+
+  /* ---------- References ---------- */
+  .refs ol{margin:0;padding-left:22px}
+  .refs li{margin-bottom:14px;font-size:.92rem;color:#3a463f}
+  .refs li a{word-break:break-word}
+  footer{padding:34px 0 60px;color:var(--muted);font-size:.82rem;text-align:center}
+
+  @media (max-width:880px){
+    .sim,.cc,.fbtool{grid-template-columns:1fr}
+    header.hero h1{font-size:2.3rem}
+    section{padding:46px 0}
+    nav .brand{display:none}
+    nav.bar .wrap{justify-content:space-between;gap:2px}
+  }
+
+  /* Embed mode (?embed=1): hide the app's own nav + hero so a host slide's
+     header is the only chrome. Non-destructive — only active when embedded. */
+  body.embed nav.bar,
+  body.embed header.hero{display:none}
+  body.embed section:first-of-type{padding-top:34px}
+</style>
+</head>
+<body>
+
+<nav class="bar">
+  <div class="wrap">
+    <span class="brand">Stocks &amp; Flows</span>
+    <a class="navlink" href="#tool1">① Faucet &amp; Drain</a>
+    <a class="navlink" href="#tool2">② Carbon Cycle</a>
+    <a class="navlink" href="#tool3">③ Feedback Loops</a>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="wrap">
+    <p class="eyebrow">Systems Thinking · Interactive Lab</p>
+    <h1>Stocks &amp; <em>Flows</em></h1>
+    <p class="lede">Three hands-on tools for playing with the systems behind Chapter&nbsp;10. Turn the knobs, run the clock, and watch how stocks rise, fall, and feed back on themselves.</p>
+    <p class="crumb">Companion to Ch. 10 · Systems and Cycles — <em>Environmental Science</em> (W. W. Norton, 2023)</p>
+  </div>
+</header>
+
+<!-- ===== TOOL 1 ===== -->
+<section id="tool1">
+  <div class="wrap">
+    <p class="sec-num">Tool 01 — One Stock, Two Flows</p>
+    <h2>The faucet &amp; the drain</h2>
+    <p class="sub">The simplest system: one stock with an inflow and an outflow. Pick a real example, move the two sliders, and press <b>Run</b>. Watch the tank fill or drain — and notice the chart's slope <em>is</em> the net flow.</p>
+
+    <div class="sim">
+      <div class="panel stage">
+        <svg class="tub" viewBox="0 0 220 260" aria-label="Stock and flow tank">
+          <rect x="34" y="8" width="14" height="30" rx="3" fill="#9aa5a0"/>
+          <rect x="20" y="4" width="42" height="12" rx="4" fill="#7c8884"/>
+          <g id="inStream">
+            <rect x="38" y="38" width="6" height="40" rx="3" fill="var(--inflow)"/>
+            <circle class="drop in" cx="41" cy="50" r="3.2" fill="var(--inflow)"/>
+            <circle class="drop in" cx="41" cy="66" r="3.2" fill="var(--inflow)"/>
+          </g>
+          <rect x="48" y="78" width="124" height="150" rx="10" fill="#eef2f0" stroke="#cbd3cf" stroke-width="2"/>
+          <clipPath id="tankClip"><rect x="50" y="80" width="120" height="146" rx="9"/></clipPath>
+          <g clip-path="url(#tankClip)">
+            <rect id="water" x="50" y="80" width="120" height="146" fill="url(#wg)"/>
+            <rect id="waterTop" x="50" y="80" width="120" height="5" fill="#bfe3cf" opacity=".85"/>
+          </g>
+          <defs><linearGradient id="wg" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#3aa18f"/><stop offset="1" stop-color="#1d6f60"/></linearGradient></defs>
+          <line id="refLine" x1="48" y1="0" x2="172" y2="0" stroke="var(--amber)" stroke-width="1.6" stroke-dasharray="5 4" opacity="0"/>
+          <path d="M96 228 L124 228 L118 244 L102 244 Z" fill="#cbd3cf"/>
+          <g id="outStream">
+            <rect x="105" y="244" width="10" height="14" rx="3" fill="var(--outflow)"/>
+            <circle class="drop out" cx="110" cy="250" r="3" fill="var(--outflow)"/>
+          </g>
+        </svg>
+        <div class="readout">
+          <div><span class="big" id="stockVal">80</span> <span class="unit" id="stockUnit">L</span></div>
+          <div class="unit" id="stockName">Water in tub</div>
+          <div class="second" id="stockSecond"></div>
+          <div class="reflegend" id="refLegend" style="display:none"><span class="dash"></span><span id="refLegendText"></span></div>
+        </div>
+      </div>
+
+      <div class="panel controls">
+        <div class="tabs" id="tabs"></div>
+        <div class="scen-desc" id="scenDesc"></div>
+        <div class="sliderrow">
+          <div class="lab"><span class="name"><span class="dot in"></span><span id="inName">Inflow</span></span>
+            <span class="val"><span id="inVal">12</span> <span id="inUnit" style="font-size:.8rem;color:var(--muted)">L/s</span></span></div>
+          <input type="range" class="in" id="inflow" min="0" max="25" step="0.5" value="12">
+        </div>
+        <div class="sliderrow">
+          <div class="lab"><span class="name"><span class="dot out"></span><span id="outName">Outflow</span></span>
+            <span class="val"><span id="outVal">8</span> <span id="outUnit" style="font-size:.8rem;color:var(--muted)">L/s</span></span></div>
+          <input type="range" class="out" id="outflow" min="0" max="25" step="0.5" value="8">
+        </div>
+        <div class="net" id="net"></div>
+        <div class="btns">
+          <button class="btn primary" id="playBtn">▶ Run</button>
+          <button class="btn ghost" id="resetBtn">↺ Reset</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel chartwrap">
+      <h3 id="chartTitle">Stock over time</h3>
+      <p class="hint">The line climbs when the faucet beats the drain and falls when the drain wins.</p>
+      <div class="chartbox"><canvas id="chart"></canvas></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== TOOL 2 ===== -->
+<section id="tool2" class="alt">
+  <div class="wrap">
+    <p class="sec-num">Tool 02 — Many Stocks, Connected</p>
+    <h2>The carbon cycle as a system of reservoirs</h2>
+    <p class="sub">Real systems chain stocks together — an outflow from one is an inflow to another, so carbon is conserved. Here are Earth's four great carbon reservoirs (real sizes, in gigatonnes of carbon). Adjust the flows below and run the clock to see where the carbon goes.</p>
+
+    <div class="cc">
+      <div class="panel ccdiagram">
+        <svg class="cyc" viewBox="0 0 560 440" aria-label="Carbon cycle reservoir diagram">
+          <defs>
+            <marker id="ahO" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8 Z" fill="var(--outflow)"/></marker>
+            <marker id="ahB" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8 Z" fill="var(--ocean)"/></marker>
+            <marker id="ahG" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8 Z" fill="var(--land)"/></marker>
+          </defs>
+
+          <!-- flows (drawn under boxes) -->
+          <!-- fossil -> atmosphere -->
+          <line id="fEmit" class="flow" x1="280" y1="372" x2="280" y2="120" stroke="var(--outflow)" stroke-width="6" marker-end="url(#ahO)" stroke-dasharray="9 7"/>
+          <!-- atmosphere -> ocean -->
+          <line id="fOcean" class="flow" x1="372" y1="92" x2="476" y2="210" stroke="var(--ocean)" stroke-width="5" marker-end="url(#ahB)" stroke-dasharray="9 7"/>
+          <!-- atmosphere -> land (regrowth/photosynthesis) -->
+          <line id="fRegrow" class="flow" x1="196" y1="100" x2="120" y2="200" stroke="var(--land)" stroke-width="5" marker-end="url(#ahG)" stroke-dasharray="9 7"/>
+          <!-- land -> atmosphere (deforestation) -->
+          <line id="fDefor" class="flow" x1="150" y1="206" x2="214" y2="104" stroke="var(--outflow)" stroke-width="4" marker-end="url(#ahO)" stroke-dasharray="9 7"/>
+
+          <!-- ATMOSPHERE box -->
+          <g>
+            <rect x="196" y="44" width="168" height="64" rx="12" fill="#dcedf2" stroke="var(--atmos)" stroke-width="2"/>
+            <text x="280" y="68" text-anchor="middle" font-size="14" font-weight="700" fill="#1d5f73" font-family="Inter">☁ Atmosphere</text>
+            <text x="280" y="92" text-anchor="middle" font-size="15" class="box-val" fill="#13241f" id="atmosVal" font-family="Fraunces">875 GtC</text>
+          </g>
+          <!-- LAND box -->
+          <g>
+            <rect x="28" y="196" width="150" height="64" rx="12" fill="#e0eccf" stroke="var(--land)" stroke-width="2"/>
+            <text x="103" y="220" text-anchor="middle" font-size="14" font-weight="700" fill="#4a6a2f" font-family="Inter">🌳 Land</text>
+            <text x="103" y="244" text-anchor="middle" font-size="15" class="box-val" fill="#13241f" id="landVal" font-family="Fraunces">2150 GtC</text>
+          </g>
+          <!-- OCEAN box -->
+          <g>
+            <rect x="384" y="196" width="150" height="64" rx="12" fill="#d3e4ee" stroke="var(--ocean)" stroke-width="2"/>
+            <text x="459" y="220" text-anchor="middle" font-size="14" font-weight="700" fill="#1b5a78" font-family="Inter">🌊 Ocean</text>
+            <text x="459" y="244" text-anchor="middle" font-size="15" class="box-val" fill="#13241f" id="oceanVal" font-family="Fraunces">38000 GtC</text>
+          </g>
+          <!-- FOSSIL box -->
+          <g>
+            <rect x="196" y="356" width="168" height="64" rx="12" fill="#e6dccf" stroke="var(--fossil)" stroke-width="2"/>
+            <text x="280" y="380" text-anchor="middle" font-size="14" font-weight="700" fill="#6b4f32" font-family="Inter">⛏ Fossil reserves</text>
+            <text x="280" y="404" text-anchor="middle" font-size="15" class="box-val" fill="#13241f" id="fossilVal" font-family="Fraunces">1000 GtC</text>
+          </g>
+
+          <!-- flow labels -->
+          <text id="fEmitLbl" x="292" y="240" font-size="10.5" fill="var(--outflow)" font-family="Inter" font-weight="600">9.6</text>
+          <text id="fOceanLbl" x="432" y="150" font-size="10.5" fill="var(--ocean)" font-family="Inter" font-weight="600">2.5</text>
+          <text id="fRegrowLbl" x="120" y="150" font-size="10.5" fill="var(--land)" font-family="Inter" font-weight="600">3.4</text>
+          <text id="fDeforLbl" x="178" y="150" font-size="10.5" fill="var(--outflow)" font-family="Inter" font-weight="600">1.6</text>
+        </svg>
+        <div class="legendkey">
+          <span><i style="background:var(--outflow)"></i> releases CO₂ to air</span>
+          <span><i style="background:var(--ocean)"></i> ocean uptake</span>
+          <span><i style="background:var(--land)"></i> plant uptake</span>
+        </div>
+      </div>
+
+      <div class="panel controls">
+        <div class="presets" id="ccPresets">
+          <button class="preset active" data-p="bau">Business as usual</button>
+          <button class="preset" data-p="netzero">Net zero</button>
+          <button class="preset" data-p="drawdown">Reforest &amp; drawdown</button>
+        </div>
+        <div class="ccstat">
+          <span>Year <b class="y" id="ccYear">2020</b></span>
+          <span><span class="ppm" id="ccPpm" style="color:var(--outflow)">412</span> <span style="font-size:.8rem;color:var(--muted)">ppm CO₂</span></span>
+        </div>
+
+        <div class="sliderrow flowrow">
+          <div class="lab"><span class="name"><span class="dot" style="background:var(--outflow)"></span>⛏ Fossil-fuel emissions</span>
+            <span class="val"><span id="ccEmitVal">9.6</span> <span style="font-size:.8rem;color:var(--muted)">GtC/yr</span></span></div>
+          <input type="range" id="ccEmit" min="0" max="15" step="0.2" value="9.6">
+        </div>
+        <div class="sliderrow flowrow">
+          <div class="lab"><span class="name"><span class="dot" style="background:var(--outflow)"></span>🌳 Deforestation</span>
+            <span class="val"><span id="ccDeforVal">1.6</span> <span style="font-size:.8rem;color:var(--muted)">GtC/yr</span></span></div>
+          <input type="range" id="ccDefor" min="0" max="5" step="0.1" value="1.6">
+        </div>
+        <div class="sliderrow flowrow">
+          <div class="lab"><span class="name"><span class="dot" style="background:var(--ocean)"></span>🌊 Ocean uptake</span>
+            <span class="val"><span id="ccOceanVal">2.5</span> <span style="font-size:.8rem;color:var(--muted)">GtC/yr</span></span></div>
+          <input type="range" id="ccOcean" min="0" max="6" step="0.1" value="2.5">
+        </div>
+        <div class="sliderrow flowrow">
+          <div class="lab"><span class="name"><span class="dot" style="background:var(--land)"></span>🌱 Plant uptake / regrowth</span>
+            <span class="val"><span id="ccLandVal">3.4</span> <span style="font-size:.8rem;color:var(--muted)">GtC/yr</span></span></div>
+          <input type="range" id="ccLand" min="0" max="8" step="0.1" value="3.4">
+        </div>
+
+        <div class="net" id="ccNet"></div>
+        <div class="btns">
+          <button class="btn primary" id="ccPlay">▶ Run the clock</button>
+          <button class="btn ghost" id="ccReset">↺ Reset</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel chartwrap">
+      <h3>Atmospheric CO₂ over time</h3>
+      <p class="hint">The dashed lines mark pre-industrial CO₂ (280&nbsp;ppm) and the 350&nbsp;ppm level often cited as a safe ceiling. Outflows from fossil and land become inflows to the atmosphere — total carbon never changes. <em>(In this simplified model the sink rates stay fixed; on the real Earth they rise and fall with CO₂ levels.)</em></p>
+      <div class="chartbox"><canvas id="ccChart"></canvas></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== TOOL 3 ===== -->
+<section id="tool3">
+  <div class="wrap">
+    <p class="sec-num">Tool 03 — When Flows Depend on the Stock</p>
+    <h2>Feedback loops you can run</h2>
+    <p class="sub">A loop forms when a flow is wired back to the stock that drives it. Pick a loop type, set its strength, and run it — then watch the <em>shape</em> of the curve each loop produces. The live diagram shows which loop is steering the system right now.</p>
+
+    <div class="fbtool">
+      <div class="panel fbloopwrap">
+        <div class="tabs" id="fbTabs" style="justify-content:center"></div>
+        <svg class="loop" viewBox="0 0 360 200" id="loopSvg" aria-label="Feedback loop diagram">
+          <defs>
+            <marker id="fbArrO" markerWidth="9" markerHeight="9" refX="6" refY="4.5" orient="auto"><path d="M0 0 L9 4.5 L0 9 Z" fill="var(--outflow)"/></marker>
+            <marker id="fbArrT" markerWidth="9" markerHeight="9" refX="6" refY="4.5" orient="auto"><path d="M0 0 L9 4.5 L0 9 Z" fill="var(--teal)"/></marker>
+          </defs>
+          <!-- single centered loop (reinforcing OR balancing) -->
+          <g id="loopSingle">
+            <path id="singlePath" d="M222 40 C320 40, 320 150, 180 150 C 60 150, 60 60, 130 44" fill="none" stroke="var(--outflow)" stroke-width="2.6" marker-end="url(#fbArrO)"/>
+            <text id="singleLblTop" x="180" y="116" text-anchor="middle" font-size="11" font-family="Inter" font-weight="600" fill="var(--muted)">flow feeds the stock</text>
+            <text id="singleLblBottom" x="180" y="178" text-anchor="middle" font-size="12.5" font-family="Inter" font-weight="700" fill="var(--outflow)">⟳ amplifies (+)</text>
+          </g>
+          <!-- dual flanking loops (logistic) -->
+          <g id="loopDual" style="display:none">
+            <path id="dualReinPath" d="M138 46 C 64 40, 44 122, 116 134 C 138 138, 140 64, 132 50" fill="none" stroke="var(--outflow)" stroke-width="2.6" marker-end="url(#fbArrO)"/>
+            <path id="dualBalPath" d="M222 46 C 296 40, 316 122, 244 134 C 222 138, 220 64, 228 50" fill="none" stroke="var(--teal)" stroke-width="2.6" marker-end="url(#fbArrT)"/>
+            <text x="74" y="178" text-anchor="middle" font-size="11" font-family="Inter" font-weight="700" fill="var(--outflow)">⟳ births (+)</text>
+            <text x="286" y="178" text-anchor="middle" font-size="11" font-family="Inter" font-weight="700" fill="var(--teal)">⟲ crowding (−)</text>
+          </g>
+          <!-- stock node (always centered, on top) -->
+          <rect x="138" y="20" width="84" height="40" rx="9" fill="#eef2f0" stroke="var(--forest)" stroke-width="2"/>
+          <text x="180" y="45" text-anchor="middle" font-size="13" font-weight="700" fill="var(--forest)" font-family="Inter">Stock</text>
+        </svg>
+        <div class="fbreadout">
+          <div><span class="big" id="fbVal">10</span> <span class="unit" id="fbUnit" style="color:var(--muted)">units</span></div>
+          <div class="fbmetric" id="fbMetric">—</div>
+          <div class="domtag" id="fbDom"></div>
+        </div>
+      </div>
+
+      <div class="panel controls">
+        <div class="scen-desc" id="fbDesc"></div>
+        <div class="sliderrow">
+          <div class="lab"><span class="name" id="fbS1Name">Growth rate</span>
+            <span class="val"><span id="fbS1Val">0.07</span> <span id="fbS1Unit" style="font-size:.8rem;color:var(--muted)">/yr</span></span></div>
+          <input type="range" id="fbS1" min="0.01" max="0.20" step="0.005" value="0.07">
+        </div>
+        <div class="sliderrow" id="fbS2Row">
+          <div class="lab"><span class="name" id="fbS2Name">Carrying capacity</span>
+            <span class="val"><span id="fbS2Val">1000</span> <span id="fbS2Unit" style="font-size:.8rem;color:var(--muted)">units</span></span></div>
+          <input type="range" id="fbS2" min="200" max="2000" step="50" value="1000">
+        </div>
+        <div class="net" id="fbNet"></div>
+        <div class="btns">
+          <button class="btn primary" id="fbPlay">▶ Run</button>
+          <button class="btn ghost" id="fbReset">↺ Reset</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel chartwrap">
+      <h3 id="fbChartTitle">Stock over time</h3>
+      <p class="hint" id="fbChartHint">Each loop type leaves a signature shape in the data.</p>
+      <div class="chartbox"><canvas id="fbChart"></canvas></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== REFERENCES ===== -->
+<section class="refs alt">
+  <div class="wrap">
+    <p class="sec-num">References</p>
+    <h2>Data sources &amp; further reading</h2>
+    <p class="sub">Every quantitative value in these tools comes from the sources below.</p>
+    <ol>
+      <li>Canadell, J. G., et al. (2021). <em>Global Carbon and Other Biogeochemical Cycles and Feedbacks.</em> In IPCC AR6, WG1, Ch. 5 (Fig. 5.12). Reservoir sizes: atmosphere ≈ 875&nbsp;GtC, ocean (dissolved inorganic carbon) ≈ 38,000&nbsp;GtC, land plants + soils ≈ 2,150&nbsp;GtC, recoverable fossil reserves ≈ 1,000&nbsp;GtC. <a href="https://www.ipcc.ch/report/ar6/wg1/chapter/chapter-5/" target="_blank" rel="noopener">ipcc.ch/report/ar6/wg1/chapter/chapter-5</a></li>
+      <li>Friedlingstein, P., et al. (2025). <em>Global Carbon Budget 2024.</em> Earth System Science Data, 17, 965–1039. Fossil-fuel CO₂ ≈ 9.6–10.1&nbsp;GtC&nbsp;yr⁻¹; land-use change ≈ 1.1–1.6; ocean sink ≈ 2.5–2.9; land sink ≈ 3.1–3.4; atmospheric growth ≈ 5&nbsp;GtC&nbsp;yr⁻¹. <a href="https://essd.copernicus.org/articles/17/965/2025/" target="_blank" rel="noopener">essd.copernicus.org/articles/17/965/2025</a></li>
+      <li>Lan, X., Tans, P., &amp; Thoning, K. W. — NOAA Global Monitoring Laboratory (2024). <em>Trends in Atmospheric Carbon Dioxide.</em> 422&nbsp;ppm (2024); pre-industrial ≈ 278&nbsp;ppm; 1&nbsp;ppm&nbsp;≈&nbsp;2.124&nbsp;GtC. <a href="https://gml.noaa.gov/ccgg/trends/" target="_blank" rel="noopener">gml.noaa.gov/ccgg/trends</a></li>
+      <li>Hansen, J., et al. (2008). <em>Target Atmospheric CO₂: Where Should Humanity Aim?</em> The Open Atmospheric Science Journal, 2, 217–231. Source of the 350&nbsp;ppm reference level. <a href="https://doi.org/10.2174/1874282300802010217" target="_blank" rel="noopener">doi.org/10.2174/1874282300802010217</a></li>
+      <li>Severinghaus, J. P., Broecker, W. S., Dempster, W. F., MacCallum, T., &amp; Wahlen, M. (1994). <em>Oxygen Loss in Biosphere 2.</em> Eos, 75(3), 33–37. O₂ fell from 20.9% toward ~14% over the first 16 months (1991–93). <a href="https://agupubs.onlinelibrary.wiley.com/doi/abs/10.1029/94EO00285" target="_blank" rel="noopener">doi.org/10.1029/94EO00285</a></li>
+      <li>Verhulst, P.-F. (1838). <em>Notice sur la loi que la population suit dans son accroissement.</em> Correspondance Mathématique et Physique, 10, 113–121. Origin of the logistic (S-curve) growth model used in the feedback tool. </li>
+      <li>Meadows, D. H. (2008). <em>Thinking in Systems: A Primer.</em> Chelsea Green Publishing. Source of the stock-and-flow and feedback-loop framing throughout.</li>
+      <li>Houtman, A., Karr, S., &amp; Interlandi, J. (2023). <em>Environmental Science: Are We Harming Earth's Life-Support System?</em> (Ch. 10). W. W. Norton &amp; Company. Source chapter for the Biosphere 2 case and carbon-cycle narrative.</li>
+    </ol>
+  </div>
+</section>
+
+<footer><div class="wrap">An interactive companion for SOS&nbsp;110. All quantitative values are sourced and cited above. · 2026</div></footer>
+
+<script>
+const $ = id => document.getElementById(id);
+
+/* ============================================================
+   TOOL 1 — Faucet & Drain
+   ============================================================ */
+(function(){
+  const SCENARIOS = {
+    bathtub:{ label:"🛁 Bathtub", stockName:"Water in tub", unit:"L", flowUnit:"L/s", timeUnit:"seconds",
+      start:80, capacity:200, inflow:12, outflow:8, inMax:25, outMax:25, step:0.5,
+      inName:"Faucet (inflow)", outName:"Drain (outflow)", dt:1, span:40,
+      desc:"The classic intuition pump. The water level is the stock; the faucet and drain are the flows.",
+      cite:"", ref:null, second:()=>"" },
+    carbon:{ label:"🌍 Atmospheric Carbon", stockName:"Carbon in the atmosphere", unit:"GtC", flowUnit:"GtC/yr", timeUnit:"years",
+      start:895, capacity:1200, inflow:11.2, outflow:6.2, inMax:15, outMax:15, step:0.1,
+      inName:"Emissions in (fossil + land use)", outName:"Sinks out (ocean + land)", dt:1, span:60,
+      desc:"Stock ≈ 895 GtC (≈ 422 ppm in 2024). Inflow = human emissions ≈ 11.2 GtC/yr; outflow = natural sinks ≈ 6.2 GtC/yr. The gap is why CO₂ climbs ~2.4 ppm every year.",
+      cite:"Global Carbon Budget 2024; NOAA GML.", ref:{value:590,label:"pre-industrial (278 ppm)"},
+      second:s=>(s/2.124).toFixed(0)+" ppm CO₂" },
+    biosphere:{ label:"🫧 Biosphere 2 Oxygen", stockName:"Oxygen concentration", unit:"% O₂", flowUnit:"%/mo", timeUnit:"months",
+      start:20.9, capacity:25, inflow:1.0, outflow:1.4, inMax:3, outMax:3, step:0.05,
+      inName:"Photosynthesis (O₂ produced)", outName:"Respiration + concrete (O₂ used)", dt:1, span:24,
+      desc:"In the sealed Arizona facility (1991–93), O₂ began at 20.9%. Microbes respired faster than plants could photosynthesize, so O₂ fell ~0.4%/mo to ~14% in 16 months.",
+      cite:"Severinghaus et al. (1994), Eos 75(3).", ref:{value:14.5,label:"1993 low ≈ 14.5% — O₂ then injected"},
+      second:s=>s<16?"⚠ below safe breathing level":"" }
+  };
+  let key="bathtub", S=SCENARIOS.bathtub.start, inflow=12, outflow=8, t=0, running=false, timer=null;
+  const series=[];
+  const TANK_TOP=80, TANK_H=146;
+  const tabsBox=$('tabs'), water=$('water'), waterTop=$('waterTop'), refLine=$('refLine'),
+        refLegend=$('refLegend'), refLegendText=$('refLegendText');
+
+  Object.keys(SCENARIOS).forEach(k=>{
+    const b=document.createElement('button'); b.className='stab'+(k===key?' active':'');
+    b.textContent=SCENARIOS[k].label; b.onclick=()=>select(k); tabsBox.appendChild(b);
+  });
+
+  const chart=new Chart($('chart').getContext('2d'),{
+    type:'line', data:{datasets:[{label:'Stock',data:series,borderColor:'#0f3d36',borderWidth:2.5,
+      backgroundColor:'rgba(42,140,125,.10)',fill:true,tension:.25,pointRadius:0,parsing:false}]},
+    options:{responsive:true,maintainAspectRatio:false,animation:false,
+      scales:{x:{type:'linear',title:{display:true,text:'time'},grid:{color:'#efeae0'},ticks:{color:'#5f6b64'}},
+              y:{title:{display:true,text:'stock'},grid:{color:'#efeae0'},ticks:{color:'#5f6b64'}}},
+      plugins:{legend:{display:false},tooltip:{callbacks:{
+        title:i=>'t = '+i[0].parsed.x.toFixed(0)+' '+SCENARIOS[key].timeUnit,
+        label:i=>i.parsed.y.toFixed(1)+' '+SCENARIOS[key].unit}}}}
+  });
+
+  function stockToY(v){const sc=SCENARIOS[key];const f=Math.max(0,Math.min(1,v/sc.capacity));return TANK_TOP+TANK_H*(1-f);}
+  function select(k){
+    key=k; const sc=SCENARIOS[k]; stop();
+    S=sc.start; inflow=sc.inflow; outflow=sc.outflow; t=0; series.length=0;
+    const inS=$('inflow'),outS=$('outflow');
+    inS.max=sc.inMax;inS.step=sc.step;inS.value=inflow; outS.max=sc.outMax;outS.step=sc.step;outS.value=outflow;
+    $('inName').textContent=sc.inName; $('outName').textContent=sc.outName;
+    $('inUnit').textContent=sc.flowUnit; $('outUnit').textContent=sc.flowUnit;
+    $('stockUnit').textContent=sc.unit; $('stockName').textContent=sc.stockName;
+    $('scenDesc').innerHTML=sc.desc+(sc.cite?'<span class="cite">Source: '+sc.cite+'</span>':'');
+    $('chartTitle').textContent=sc.stockName+' over time';
+    chart.options.scales.x.title.text='time ('+sc.timeUnit+')';
+    chart.options.scales.y.title.text=sc.stockName+' ('+sc.unit+')';
+    [...tabsBox.children].forEach((b,i)=>b.classList.toggle('active',Object.keys(SCENARIOS)[i]===k));
+    if(sc.ref){const y=stockToY(sc.ref.value);refLine.setAttribute('y1',y);refLine.setAttribute('y2',y);
+      refLine.setAttribute('opacity',.9);refLegendText.textContent=sc.ref.label;refLegend.style.display='inline-flex';}
+    else{refLine.setAttribute('opacity',0);refLegend.style.display='none';}
+    $('playBtn').textContent='▶ Run'; syncLabels(); render(); seed();
+  }
+  function render(){
+    const sc=SCENARIOS[key]; const f=Math.max(0,Math.min(1,S/sc.capacity)); const h=TANK_H*f; const y=TANK_TOP+TANK_H-h;
+    water.setAttribute('y',y); water.setAttribute('height',h);
+    waterTop.setAttribute('y',Math.max(TANK_TOP,y-1)); waterTop.setAttribute('opacity',h>3?.85:0);
+    $('stockVal').textContent=S.toFixed(sc.unit==='% O₂'?1:0); $('stockSecond').textContent=sc.second(S);
+    const net=inflow-outflow; const v=$('net'); let cls='steady',word='holding steady',arrow='→';
+    if(net>.001){cls='rising';word='rising';arrow='↑';} else if(net<-.001){cls='falling';word='falling';arrow='↓';}
+    v.innerHTML='<b style="color:var(--inflow)">'+inflow.toFixed(sc.step<1?1:0)+'</b> in − '
+      +'<b style="color:var(--outflow)">'+outflow.toFixed(sc.step<1?1:0)+'</b> out = '
+      +'<b class="'+cls+'">'+(net>=0?'+':'')+net.toFixed(1)+' '+sc.flowUnit+'</b> '
+      +'<span class="verdict '+cls+'">'+arrow+' stock '+word+'</span>';
+    $('inStream').style.opacity=inflow>0?1:.15; $('outStream').style.opacity=outflow>0?1:.15;
+    const inDur=inflow>0?Math.max(.35,1.6-inflow/sc.inMax*1.3):0, outDur=outflow>0?Math.max(.35,1.6-outflow/sc.outMax*1.3):0;
+    document.querySelectorAll('.drop.in').forEach(d=>d.style.animationDuration=inDur?inDur+'s':'0s');
+    document.querySelectorAll('.drop.out').forEach(d=>d.style.animationDuration=outDur?outDur+'s':'0s');
+  }
+  function syncLabels(){const sc=SCENARIOS[key];$('inVal').textContent=inflow.toFixed(sc.step<1?1:0);$('outVal').textContent=outflow.toFixed(sc.step<1?1:0);}
+  function seed(){series.length=0;series.push({x:0,y:S});draw();}
+  function draw(){const sc=SCENARIOS[key];const minX=Math.max(0,t-sc.span);
+    while(series.length>2&&series[0].x<minX)series.shift();
+    chart.options.scales.x.min=minX;chart.options.scales.x.max=Math.max(sc.span,t);chart.update('none');}
+  function step(){const sc=SCENARIOS[key];S+=(inflow-outflow)*sc.dt;if(S<0)S=0;if(S>sc.capacity)S=sc.capacity;
+    t+=sc.dt;series.push({x:t,y:S});render();draw();}
+  function play(){if(running)return;running=true;$('playBtn').textContent='❚❚ Pause';timer=setInterval(step,300);}
+  function stop(){running=false;if(timer)clearInterval(timer);$('playBtn').textContent='▶ Run';}
+  $('inflow').addEventListener('input',e=>{inflow=parseFloat(e.target.value);syncLabels();render();});
+  $('outflow').addEventListener('input',e=>{outflow=parseFloat(e.target.value);syncLabels();render();});
+  $('playBtn').addEventListener('click',()=>running?stop():play());
+  $('resetBtn').addEventListener('click',()=>select(key));
+  select('bathtub');
+})();
+
+/* ============================================================
+   TOOL 2 — Carbon Cycle Sandbox
+   ============================================================ */
+(function(){
+  const START={atmos:875, land:2150, ocean:38000, fossil:1000};
+  const PRESETS={
+    bau:      {emit:9.6, defor:1.6, ocean:2.5, land:3.4},
+    netzero:  {emit:0.0, defor:0.0, ocean:2.5, land:3.4},
+    drawdown: {emit:0.0, defor:0.0, ocean:3.0, land:6.5}
+  };
+  let st={...START}, year=2020, running=false, timer=null;
+  let flows={...PRESETS.bau};
+  const series=[];
+
+  // reference-line plugin for ppm thresholds
+  const refPlugin={id:'ccRefs',afterDraw(c){
+    const {ctx,chartArea:{left,right},scales:{y}}=c;
+    [[280,'pre-industrial 280','#8a948d'],[350,'350 ppm ceiling','#c2622d']].forEach(([val,txt,col])=>{
+      if(val<y.min||val>y.max)return; const yp=y.getPixelForValue(val);
+      ctx.save();ctx.strokeStyle=col;ctx.setLineDash([5,4]);ctx.lineWidth=1.3;
+      ctx.beginPath();ctx.moveTo(left,yp);ctx.lineTo(right,yp);ctx.stroke();
+      ctx.setLineDash([]);ctx.fillStyle=col;ctx.font='11px Inter';ctx.fillText(txt,left+6,yp-4);ctx.restore();
+    });
+  }};
+  const chart=new Chart($('ccChart').getContext('2d'),{
+    type:'line', data:{datasets:[{label:'CO₂ (ppm)',data:series,borderColor:'#c2622d',borderWidth:2.5,
+      backgroundColor:'rgba(194,98,45,.10)',fill:true,tension:.25,pointRadius:0,parsing:false}]},
+    options:{responsive:true,maintainAspectRatio:false,animation:false,
+      scales:{x:{type:'linear',title:{display:true,text:'year'},grid:{color:'#efeae0'},ticks:{color:'#5f6b64',callback:v=>v.toFixed(0)}},
+              y:{title:{display:true,text:'atmospheric CO₂ (ppm)'},grid:{color:'#efeae0'},ticks:{color:'#5f6b64'},
+                 suggestedMin:260}},
+      plugins:{legend:{display:false},tooltip:{callbacks:{title:i=>'Year '+i[0].parsed.x.toFixed(0),label:i=>i.parsed.y.toFixed(0)+' ppm'}}}},
+    plugins:[refPlugin]
+  });
+
+  function setArrow(lineId,lblId,val,maxRef){
+    const ln=$(lineId), lbl=$(lblId);
+    if(val<=0.01){ln.style.opacity=.12;lbl.style.opacity=.25;}
+    else{ln.style.opacity=1;lbl.style.opacity=1;}
+    ln.setAttribute('stroke-width',(2.5+val/maxRef*6).toFixed(1));
+    const dur=Math.max(.5,2.2-val/maxRef*1.7);
+    ln.style.animation='dash '+dur+'s linear infinite';
+    lbl.textContent=val.toFixed(1);
+  }
+  function fmt(n){return n>=10000?Math.round(n).toLocaleString():n.toFixed(0);}
+  function render(){
+    $('atmosVal').textContent=fmt(st.atmos)+' GtC';
+    $('landVal').textContent=fmt(st.land)+' GtC';
+    $('oceanVal').textContent=fmt(st.ocean)+' GtC';
+    $('fossilVal').textContent=fmt(st.fossil)+' GtC';
+    const ppm=st.atmos/2.124;
+    $('ccPpm').textContent=ppm.toFixed(0);
+    $('ccPpm').style.color=ppm>350?'var(--outflow)':'var(--inflow)';
+    $('ccYear').textContent=year;
+    setArrow('fEmit','fEmitLbl',flows.emit,15);
+    setArrow('fDefor','fDeforLbl',flows.defor,5);
+    setArrow('fOcean','fOceanLbl',flows.ocean,6);
+    setArrow('fRegrow','fRegrowLbl',flows.land,8);
+    const inToAir=flows.emit+flows.defor, outOfAir=flows.ocean+flows.land, net=inToAir-outOfAir;
+    let cls='steady',word='steady',arrow='→';
+    if(net>.01){cls='rising';word='CO₂ rising';arrow='↑';} else if(net<-.01){cls='falling';word='CO₂ falling';arrow='↓';}
+    $('ccNet').innerHTML='<b style="color:var(--outflow)">'+inToAir.toFixed(1)+'</b> into air − '
+      +'<b style="color:var(--inflow)">'+outOfAir.toFixed(1)+'</b> out = '
+      +'<b class="'+cls+'">'+(net>=0?'+':'')+net.toFixed(1)+' GtC/yr</b> '
+      +'<span class="verdict '+cls+'">'+arrow+' '+word+'</span>';
+  }
+  function seed(){series.length=0;series.push({x:year,y:st.atmos/2.124});chart.update('none');}
+  function step(){
+    let emit=flows.emit;
+    if(emit>st.fossil) emit=Math.max(0,st.fossil);   // only burn what's actually left
+    st.fossil-=emit; if(st.fossil<0)st.fossil=0;
+    if(st.fossil<=0 && flows.emit>0){                // reserves exhausted → emissions forced to zero
+      flows.emit=0; $('ccEmit').value=0; $('ccEmitVal').textContent='0.0';
+      document.querySelectorAll('.preset').forEach(b=>b.classList.remove('active'));
+    }
+    const defor=Math.min(flows.defor,Math.max(0,st.land)); // can't deforest below 0
+    const inAir=emit+defor, outAir=flows.ocean+flows.land;
+    st.atmos+=inAir-outAir;
+    st.ocean+=flows.ocean;
+    st.land+=flows.land-defor;
+    if(st.atmos<0)st.atmos=0; if(st.land<0)st.land=0;
+    year+=1;
+    series.push({x:year,y:st.atmos/2.124});
+    chart.options.scales.x.max=year;
+    chart.update('none'); render();
+    if(year>=2220)stop();
+  }
+  function play(){if(running)return;running=true;$('ccPlay').textContent='❚❚ Pause';timer=setInterval(step,90);}
+  function stop(){running=false;if(timer)clearInterval(timer);$('ccPlay').textContent='▶ Run the clock';}
+  function reset(){stop();st={...START};year=2020;render();seed();}
+  function applyPreset(p){
+    flows={...PRESETS[p]};
+    $('ccEmit').value=flows.emit; $('ccEmitVal').textContent=flows.emit.toFixed(1);
+    $('ccDefor').value=flows.defor; $('ccDeforVal').textContent=flows.defor.toFixed(1);
+    $('ccOcean').value=flows.ocean; $('ccOceanVal').textContent=flows.ocean.toFixed(1);
+    $('ccLand').value=flows.land; $('ccLandVal').textContent=flows.land.toFixed(1);
+    render();
+  }
+  // wire sliders
+  [['ccEmit','emit','ccEmitVal'],['ccDefor','defor','ccDeforVal'],['ccOcean','ocean','ccOceanVal'],['ccLand','land','ccLandVal']]
+    .forEach(([id,key,lbl])=>{$(id).addEventListener('input',e=>{flows[key]=parseFloat(e.target.value);
+      $(lbl).textContent=flows[key].toFixed(1);document.querySelectorAll('.preset').forEach(b=>b.classList.remove('active'));render();});});
+  document.querySelectorAll('.preset').forEach(b=>b.addEventListener('click',()=>{
+    document.querySelectorAll('.preset').forEach(x=>x.classList.remove('active'));b.classList.add('active');applyPreset(b.dataset.p);}));
+  $('ccPlay').addEventListener('click',()=>running?stop():play());
+  $('ccReset').addEventListener('click',reset);
+  applyPreset('bau'); render(); seed();
+})();
+
+/* ============================================================
+   TOOL 3 — Feedback Loop Explorer
+   ============================================================ */
+(function(){
+  const MODES={
+    reinforcing:{ label:"⟳ Reinforcing", unit:"$", start:100,
+      s1:{name:"Interest rate",min:0.01,max:0.20,step:0.005,val:0.07,unit:"/yr",fmt:v=>v.toFixed(3)},
+      s2:null, chartTitle:"Compound growth (a J-curve)",
+      hint:"The flow is proportional to the stock, so the bigger it gets, the faster it grows — a runaway J-curve.",
+      desc:"<b>Reinforcing (positive) feedback.</b> A savings account: each year's interest is added to the balance, so next year earns interest too. The same math drives unchecked population growth or the Biosphere 2 oxygen spiral.",
+      cite:"" , timeUnit:"years"},
+    balancing:{ label:"⟲ Balancing", unit:"°C", start:90,
+      s1:{name:"Cooling rate",min:0.02,max:0.30,step:0.01,val:0.12,unit:"/min",fmt:v=>v.toFixed(2)},
+      s2:{name:"Room temperature (goal)",min:0,max:40,step:1,val:21,unit:"°C",fmt:v=>v.toFixed(0)},
+      chartTitle:"Goal-seeking (approach to a set point)",
+      hint:"The flow is proportional to the gap between the stock and its goal, so it slows as it closes in — never overshooting.",
+      desc:"<b>Balancing (negative) feedback.</b> A hot cup of coffee cools toward room temperature: the bigger the temperature gap, the faster it cools, easing off as it nears the goal. A thermostat works the same way.",
+      cite:"", timeUnit:"minutes"},
+    logistic:{ label:"⟳⟲ Both (S-curve)", unit:"animals", start:20,
+      s1:{name:"Growth rate",min:0.05,max:0.60,step:0.01,val:0.30,unit:"/yr",fmt:v=>v.toFixed(2)},
+      s2:{name:"Carrying capacity",min:200,max:2000,step:50,val:1000,unit:"animals",fmt:v=>v.toFixed(0)},
+      chartTitle:"Logistic growth (an S-curve)",
+      hint:"A reinforcing loop (births) dominates early; a balancing loop (crowding, limited food) takes over near the carrying capacity — producing an S-curve.",
+      desc:"<b>Two loops at once.</b> A population grows fast while resources are plentiful (reinforcing), then levels off as it nears the environment's carrying capacity (balancing). Verhulst's logistic model captures both.",
+      cite:"Verhulst (1838).", timeUnit:"years"}
+  };
+  let mode="reinforcing", S=MODES.reinforcing.start, t=0, running=false, timer=null;
+  const series=[];
+  const fbTabs=$('fbTabs');
+
+  Object.keys(MODES).forEach(k=>{
+    const b=document.createElement('button'); b.className='stab'+(k===mode?' active':'');
+    b.textContent=MODES[k].label; b.onclick=()=>select(k); fbTabs.appendChild(b);
+  });
+
+  const chart=new Chart($('fbChart').getContext('2d'),{
+    type:'line', data:{datasets:[{label:'Stock',data:series,borderColor:'#0f3d36',borderWidth:2.5,
+      backgroundColor:'rgba(42,140,125,.10)',fill:true,tension:.25,pointRadius:0,parsing:false}]},
+    options:{responsive:true,maintainAspectRatio:false,animation:false,
+      scales:{x:{type:'linear',title:{display:true,text:'time'},grid:{color:'#efeae0'},ticks:{color:'#5f6b64'}},
+              y:{title:{display:true,text:'stock'},grid:{color:'#efeae0'},ticks:{color:'#5f6b64'},beginAtZero:true}},
+      plugins:{legend:{display:false},tooltip:{callbacks:{
+        title:i=>'t = '+i[0].parsed.x.toFixed(0)+' '+MODES[mode].timeUnit,
+        label:i=>i.parsed.y.toFixed(1)+' '+MODES[mode].unit}}}}
+  });
+
+  const s1=()=>parseFloat($('fbS1').value), s2=()=>parseFloat($('fbS2').value);
+
+  function showLoops(){
+    const single=$('loopSingle'), dual=$('loopDual'), sp=$('singlePath');
+    if(mode==='logistic'){ single.style.display='none'; dual.style.display=''; return; }
+    single.style.display=''; dual.style.display='none';
+    if(mode==='reinforcing'){
+      sp.setAttribute('stroke','var(--outflow)'); sp.setAttribute('marker-end','url(#fbArrO)');
+      $('singleLblTop').textContent='growth feeds more growth';
+      $('singleLblBottom').textContent='⟳ amplifies (+)'; $('singleLblBottom').setAttribute('fill','var(--outflow)');
+    } else {
+      sp.setAttribute('stroke','var(--teal)'); sp.setAttribute('marker-end','url(#fbArrT)');
+      $('singleLblTop').textContent='flow chases the goal';
+      $('singleLblBottom').textContent='⟲ counteracts (−)'; $('singleLblBottom').setAttribute('fill','var(--teal)');
+    }
+  }
+  function select(k){
+    mode=k; const m=MODES[k]; stop();
+    [...fbTabs.children].forEach((b,i)=>b.classList.toggle('active',Object.keys(MODES)[i]===k));
+    // slider 1
+    const a=m.s1; const i1=$('fbS1'); i1.min=a.min;i1.max=a.max;i1.step=a.step;i1.value=a.val;
+    $('fbS1Name').textContent=a.name; $('fbS1Unit').textContent=a.unit; $('fbS1Val').textContent=a.fmt(a.val);
+    // slider 2
+    if(m.s2){$('fbS2Row').style.display='';const b=m.s2;const i2=$('fbS2');
+      i2.min=b.min;i2.max=b.max;i2.step=b.step;i2.value=b.val;
+      $('fbS2Name').textContent=b.name;$('fbS2Unit').textContent=b.unit;$('fbS2Val').textContent=b.fmt(b.val);}
+    else{$('fbS2Row').style.display='none';}
+    $('fbUnit').textContent=m.unit;
+    $('fbDesc').innerHTML=m.desc+(m.cite?'<span class="cite">Source: '+m.cite+'</span>':'');
+    $('fbChartTitle').textContent=m.chartTitle; $('fbChartHint').textContent=m.hint;
+    chart.options.scales.x.title.text='time ('+m.timeUnit+')'; chart.options.scales.y.title.text='stock ('+m.unit+')';
+    S=m.start; t=0; showLoops(); reseed(); render();
+  }
+  function metricText(){
+    const m=MODES[mode];
+    if(mode==='reinforcing'){const dt=Math.log(2)/s1();return 'Doubling time ≈ '+dt.toFixed(1)+' '+m.timeUnit;}
+    if(mode==='balancing'){const goal=s2();const gap=Math.abs(S-goal);const span=Math.abs(m.start-goal)||1;
+      return (100*(1-gap/span)).toFixed(0)+'% of the way to goal';}
+    const K=s2();return (100*S/K).toFixed(0)+'% of carrying capacity';
+  }
+  function domText(){
+    if(mode==='reinforcing')return '<span style="color:var(--outflow)">Reinforcing loop driving growth ⟳</span>';
+    if(mode==='balancing')return '<span style="color:var(--teal)">Balancing loop closing the gap ⟲</span>';
+    const K=s2(); const ratio=S/K;
+    // logistic: reinforcing dominant when far below K, balancing dominant near K
+    if(ratio<0.5)return '<span style="color:var(--outflow)">Reinforcing loop dominates — accelerating ⟳</span>';
+    return '<span style="color:var(--teal)">Balancing loop dominates — leveling off ⟲</span>';
+  }
+  function render(){
+    const m=MODES[mode];
+    $('fbVal').textContent=S>=1000?Math.round(S).toLocaleString():S.toFixed(1);
+    $('fbMetric').textContent=metricText();
+    $('fbDom').innerHTML=domText();
+    // net readout
+    let flow=0,label='';
+    if(mode==='reinforcing'){flow=s1()*S;label='inflow = rate × stock';}
+    else if(mode==='balancing'){flow=s1()*(s2()-S);label='flow = rate × (goal − stock)';}
+    else{flow=s1()*S*(1-S/s2());label='flow = r × stock × (1 − stock/K)';}
+    const cls=flow>.01?'rising':(flow<-.01?'falling':'steady');
+    $('fbNet').innerHTML='<span style="font-size:.85rem">'+label+'</span> &nbsp;=&nbsp; '
+      +'<b class="'+cls+'">'+(flow>=0?'+':'')+flow.toFixed(1)+'</b>/'+m.timeUnit.slice(0,-1);
+    // logistic loop highlighting
+    if(mode==='logistic'){const ratio=S/s2();
+      $('dualReinPath').setAttribute('opacity',ratio<0.6?1:0.3);
+      $('dualBalPath').setAttribute('opacity',ratio>0.4?1:0.3);}
+  }
+  function reseed(){series.length=0;series.push({x:0,y:S});chart.options.scales.x.min=0;chart.options.scales.x.max=40;chart.update('none');}
+  function step(){
+    let dS=0;
+    if(mode==='reinforcing')dS=s1()*S;
+    else if(mode==='balancing')dS=s1()*(s2()-S);
+    else dS=s1()*S*(1-S/s2());
+    S+=dS;
+    if(S<0)S=0; if(S>1e7)S=1e7;
+    t+=1; series.push({x:t,y:S});
+    chart.options.scales.x.max=Math.max(40,t); chart.update('none'); render();
+    // stop conditions
+    if(mode==='reinforcing'&&S>=1e6)stop();
+    if(mode==='balancing'&&Math.abs(S-s2())<0.05)stop();
+    if(mode==='logistic'&&S>=s2()*0.999)stop();
+    if(t>400)stop();
+  }
+  function play(){if(running)return;running=true;$('fbPlay').textContent='❚❚ Pause';timer=setInterval(step,90);}
+  function stop(){running=false;if(timer)clearInterval(timer);$('fbPlay').textContent='▶ Run';}
+  $('fbS1').addEventListener('input',()=>{$('fbS1Val').textContent=MODES[mode].s1.fmt(s1());render();});
+  $('fbS2').addEventListener('input',()=>{if(MODES[mode].s2)$('fbS2Val').textContent=MODES[mode].s2.fmt(s2());render();});
+  $('fbPlay').addEventListener('click',()=>running?stop():play());
+  $('fbReset').addEventListener('click',()=>select(mode));
+  select('reinforcing');
+})();
+
+/* ---------- shared drop + dash animations ---------- */
+const styleTag=document.createElement('style');
+styleTag.textContent=`
+  @keyframes fall{0%{transform:translateY(-10px);opacity:0}20%{opacity:1}100%{transform:translateY(28px);opacity:0}}
+  @keyframes fallout{0%{transform:translateY(-4px);opacity:0}20%{opacity:1}100%{transform:translateY(12px);opacity:0}}
+  @keyframes dash{to{stroke-dashoffset:-32}}
+  .drop.in{animation:fall 1s linear infinite}
+  .drop.in:nth-child(3){animation-delay:.5s}
+  .drop.out{animation:fallout 1s linear infinite}
+  .flow{animation:dash 1.4s linear infinite}
+  @media (prefers-reduced-motion:reduce){.drop.in,.drop.out,.flow{animation:none}}
+`;
+document.head.appendChild(styleTag);
+
+/* ---------- sticky-nav active highlight ---------- */
+const navLinks=[...document.querySelectorAll('.navlink')];
+const obs=new IntersectionObserver(es=>{es.forEach(e=>{if(e.isIntersecting){
+  navLinks.forEach(l=>l.classList.toggle('active',l.getAttribute('href')==='#'+e.target.id));}});},
+  {rootMargin:'-45% 0px -50% 0px'});
+['tool1','tool2','tool3'].forEach(id=>obs.observe($(id)));
+</script>
+<script>
+/* Embed mode: ?embed=1 hides the app's own nav/hero (see body.embed CSS). */
+if(new URLSearchParams(location.search).get('embed'))document.body.classList.add('embed');
+</script>
+</body>
+</html>

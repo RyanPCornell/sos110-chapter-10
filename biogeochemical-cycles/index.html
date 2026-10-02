@@ -1,0 +1,1219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Biogeochemical Cycles Explorer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#080d16;
+  --surface:#0f172a;
+  --surface2:#162032;
+  --border:#1e293b;
+  --text:#e2e8f0;
+  --text-muted:#94a3b8;
+  --text-dim:#475569;
+}
+html,body{height:100%;font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);overflow:hidden}
+
+/* ─── HEADER ─────────────────────────────────── */
+#app-header{
+  position:fixed;top:0;left:0;right:0;height:58px;
+  background:rgba(8,13,22,.92);backdrop-filter:blur(16px);
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;padding:0 24px;gap:16px;z-index:100;
+}
+#app-header .logo{
+  display:flex;align-items:center;gap:10px;
+  font-size:15px;font-weight:700;letter-spacing:-.3px;
+}
+#app-header .logo .dot{
+  width:8px;height:8px;border-radius:50%;background:var(--accent,#14b8a6);
+  box-shadow:0 0 12px var(--accent,#14b8a6);
+  transition:background .4s,box-shadow .4s;
+}
+#app-header .subtitle{font-size:12px;color:var(--text-muted);font-weight:400}
+#back-btn{
+  margin-left:auto;display:none;align-items:center;gap:6px;
+  font-size:13px;color:var(--text-muted);cursor:pointer;
+  padding:6px 12px;border:1px solid var(--border);border-radius:6px;
+  background:transparent;transition:all .2s;
+}
+#back-btn:hover{background:var(--surface2);color:var(--text)}
+#cycle-nav{display:none;align-items:center;gap:4px;margin-left:16px}
+.cycle-nav-btn{
+  font-size:11px;font-weight:500;padding:4px 10px;border-radius:4px;
+  border:1px solid var(--border);background:transparent;
+  color:var(--text-muted);cursor:pointer;transition:all .2s;
+}
+.cycle-nav-btn.active,.cycle-nav-btn:hover{background:var(--surface2);color:var(--text)}
+.cycle-nav-btn.active{border-color:var(--accent);color:var(--accent)}
+
+/* ─── VIEWS ──────────────────────────────────── */
+#home-view,#cycle-view{
+  position:fixed;top:58px;left:0;right:0;bottom:0;
+  transition:opacity .4s,transform .4s;
+  opacity:0;pointer-events:none;
+}
+#home-view{overflow-y:auto;display:flex;flex-direction:column;align-items:center;padding:48px 24px 80px;transform:none}
+#cycle-view{display:flex;transform:translateY(12px);background:var(--bg)}
+.view-active{opacity:1!important;pointer-events:all!important;transform:none!important}
+/* Embed mode (?embed=1): hide the app's own header so a host slide's bar is the
+   only chrome, and reclaim the 58px it occupied. Non-destructive. */
+body.embed #app-header{display:none}
+body.embed #home-view,body.embed #cycle-view{top:0}
+body.embed #home-view{padding-top:32px}
+
+/* ─── HOME VIEW ──────────────────────────────── */
+.home-hero{text-align:center;max-width:600px;margin-bottom:56px}
+.home-hero h1{font-size:42px;font-weight:800;letter-spacing:-1.5px;line-height:1.1;margin-bottom:12px}
+.home-hero h1 span{
+  background:linear-gradient(135deg,#14b8a6,#3b82f6,#a855f7);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+}
+.home-hero p{font-size:15px;color:var(--text-muted);line-height:1.6;max-width:480px;margin:0 auto}
+.cycles-grid{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));
+  gap:20px;width:100%;max-width:1100px;
+}
+.cycle-card{
+  background:var(--surface);border:1px solid var(--border);border-radius:16px;
+  padding:28px;cursor:pointer;position:relative;overflow:hidden;
+  transition:transform .25s,box-shadow .25s,border-color .25s;
+}
+.cycle-card::before{
+  content:'';position:absolute;inset:0;
+  background:radial-gradient(ellipse at 20% 20%, var(--card-color,.3) 0%, transparent 70%);
+  opacity:.08;transition:opacity .25s;
+}
+.cycle-card:hover{transform:translateY(-4px);box-shadow:0 20px 60px -10px var(--card-glow)}
+.cycle-card:hover::before{opacity:.15}
+.cycle-card:hover .card-arrow{transform:translateX(4px)}
+.card-icon{font-size:36px;margin-bottom:16px}
+.card-title{font-size:20px;font-weight:700;margin-bottom:6px;letter-spacing:-.4px}
+.card-desc{font-size:13px;color:var(--text-muted);line-height:1.6;margin-bottom:20px}
+.card-tags{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px}
+.card-tag{
+  font-size:10px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;
+  padding:3px 8px;border-radius:4px;
+  background:color-mix(in srgb,var(--card-color) 15%,transparent);
+  color:var(--card-color);border:1px solid color-mix(in srgb,var(--card-color) 30%,transparent);
+}
+.card-footer{display:flex;align-items:center;justify-content:space-between}
+.card-meta{font-size:11px;color:var(--text-dim)}
+.card-arrow{font-size:14px;color:var(--card-color);transition:transform .2s}
+
+/* ─── CYCLE VIEW ─────────────────────────────── */
+#diagram-area{
+  flex:1;position:relative;overflow:hidden;
+  background:radial-gradient(ellipse at 50% 30%, var(--accent-dim,rgba(20,184,166,.06)) 0%, transparent 70%);
+}
+#diagram-svg{position:absolute;inset:0;width:100%;height:100%}
+#particle-canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.node-div{
+  position:absolute;transform:translate(-50%,-50%);
+  display:flex;flex-direction:column;align-items:center;gap:8px;
+  cursor:pointer;z-index:10;
+}
+.node-circle{
+  width:72px;height:72px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;flex-direction:column;
+  border:2px solid var(--accent);
+  background:color-mix(in srgb,var(--accent) 12%,var(--surface));
+  font-size:26px;
+  box-shadow:0 0 0 0 color-mix(in srgb,var(--accent) 40%,transparent);
+  transition:transform .2s,box-shadow .2s,background .2s,border-color .2s;
+  position:relative;
+}
+.node-circle::after{
+  content:'';position:absolute;inset:-4px;border-radius:50%;
+  border:2px solid color-mix(in srgb,var(--accent) 30%,transparent);
+  animation:pulse-ring 2.5s ease-out infinite;
+}
+.node-div:hover .node-circle,
+.node-div.selected .node-circle{
+  transform:scale(1.12);
+  background:color-mix(in srgb,var(--accent) 22%,var(--surface));
+  box-shadow:0 0 0 8px color-mix(in srgb,var(--accent) 15%,transparent),
+             0 0 40px color-mix(in srgb,var(--accent) 35%,transparent);
+}
+.node-label{
+  font-size:11px;font-weight:600;letter-spacing:.2px;text-align:center;
+  background:rgba(8,13,22,.85);padding:3px 8px;border-radius:4px;
+  border:1px solid var(--border);max-width:90px;line-height:1.3;
+}
+.node-reservoir{
+  font-size:9px;color:var(--accent);font-family:'JetBrains Mono',monospace;
+  font-weight:500;
+}
+@keyframes pulse-ring{
+  0%{transform:scale(1);opacity:.6}
+  100%{transform:scale(1.6);opacity:0}
+}
+
+/* ─── INFO PANEL ─────────────────────────────── */
+#info-panel{
+  width:340px;position:absolute;top:0;right:0;bottom:0;
+  background:rgba(15,23,42,.96);backdrop-filter:blur(12px);
+  border-left:1px solid var(--border);
+  overflow-y:auto;display:flex;flex-direction:column;
+  transition:transform .35s cubic-bezier(.4,0,.2,1);
+  z-index:30;
+}
+#info-panel.collapsed{transform:translateX(100%)}
+.panel-header{
+  padding:20px 20px 16px;border-bottom:1px solid var(--border);
+  position:sticky;top:0;background:rgba(15,23,42,.98);z-index:5;
+  display:flex;flex-direction:column;
+}
+.panel-close{
+  position:absolute;top:14px;right:14px;
+  width:28px;height:28px;border-radius:6px;
+  background:var(--surface2);border:1px solid var(--border);
+  color:var(--text-muted);font-size:14px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:background .15s,color .15s;
+}
+.panel-close:hover{background:var(--border);color:var(--text)}
+.panel-badge{
+  display:inline-flex;align-items:center;gap:5px;
+  font-size:10px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;
+  padding:3px 8px;border-radius:4px;margin-bottom:10px;
+  color:var(--accent);
+  background:color-mix(in srgb,var(--accent) 12%,transparent);
+  border:1px solid color-mix(in srgb,var(--accent) 25%,transparent);
+}
+.panel-title{font-size:20px;font-weight:700;letter-spacing:-.4px;line-height:1.2;margin-bottom:4px}
+.panel-subtitle{font-size:12px;color:var(--text-muted)}
+.panel-body{padding:20px;flex:1;display:flex;flex-direction:column;gap:20px}
+.panel-section{display:flex;flex-direction:column;gap:8px}
+.panel-section h4{font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--text-dim)}
+.panel-section p{font-size:13px;line-height:1.65;color:var(--text-muted)}
+.stat-row{
+  display:flex;justify-content:space-between;align-items:baseline;
+  padding:8px 12px;background:var(--surface2);border-radius:8px;
+  border:1px solid var(--border);
+}
+.stat-label{font-size:12px;color:var(--text-muted)}
+.stat-value{font-size:13px;font-weight:600;color:var(--accent);font-family:'JetBrains Mono',monospace}
+.impact-tag{
+  display:inline-flex;align-items:center;gap:4px;
+  font-size:11px;font-weight:600;padding:4px 10px;border-radius:6px;
+  background:rgba(239,68,68,.12);color:#f87171;border:1px solid rgba(239,68,68,.25);
+}
+.fun-fact{
+  background:color-mix(in srgb,var(--accent) 8%,transparent);
+  border:1px solid color-mix(in srgb,var(--accent) 20%,transparent);
+  border-radius:10px;padding:14px;
+  font-size:12px;color:var(--text-muted);line-height:1.6;
+}
+.fun-fact strong{color:var(--text);display:block;margin-bottom:4px;font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--accent)}
+
+/* edge label tooltip */
+.edge-hit{cursor:pointer}
+.edge-popup{
+  position:absolute;pointer-events:none;z-index:50;
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:8px;padding:10px 14px;font-size:12px;
+  box-shadow:0 8px 32px rgba(0,0,0,.4);
+  min-width:160px;max-width:220px;line-height:1.5;
+}
+.edge-popup .ep-title{font-weight:600;font-size:13px;margin-bottom:4px}
+.edge-popup .ep-flux{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent)}
+
+/* ─── WELCOME PANEL ──────────────────────────── */
+#welcome-panel{
+  position:absolute;bottom:20px;right:20px;
+  background:rgba(8,13,22,.85);backdrop-filter:blur(8px);
+  border:1px solid var(--border);border-radius:12px;padding:12px 16px;
+  z-index:20;max-width:195px;
+  pointer-events:none;
+  opacity:1;transition:opacity .4s;
+}
+#welcome-panel.hidden{opacity:0}
+.welcome-label{
+  font-size:9px;font-weight:700;letter-spacing:.6px;
+  text-transform:uppercase;color:var(--text-dim);margin-bottom:6px;
+}
+.welcome-hint{
+  font-size:10px;color:var(--text-muted);text-align:left;line-height:1.55;
+}
+
+/* ─── LEGEND ─────────────────────────────────── */
+#legend{
+  position:absolute;bottom:20px;left:20px;
+  background:rgba(8,13,22,.85);backdrop-filter:blur(8px);
+  border:1px solid var(--border);border-radius:10px;padding:12px 16px;
+  font-size:11px;color:var(--text-muted);line-height:1.8;z-index:20;
+  pointer-events:none;
+}
+#legend .leg-row{display:flex;align-items:center;gap:8px}
+.leg-line{width:24px;height:2px;background:var(--accent);opacity:.7}
+.leg-dot{width:8px;height:8px;border-radius:50%;background:var(--accent)}
+
+/* ─── CYCLE TITLE CARD ───────────────────────── */
+#cycle-title-card{
+  position:absolute;top:16px;left:16px;
+  background:rgba(8,13,22,.85);backdrop-filter:blur(8px);
+  border:1px solid var(--border);border-radius:12px;padding:12px 16px;
+  z-index:20;max-width:195px;
+}
+#cycle-title-card .ct-name{font-size:16px;font-weight:700;letter-spacing:-.3px;line-height:1.2}
+#cycle-title-card .ct-tagline{font-size:10px;color:var(--text-muted);margin-top:3px;line-height:1.4}
+#cycle-title-card .ct-key{
+  margin-top:8px;font-size:9px;font-weight:700;letter-spacing:.6px;
+  text-transform:uppercase;color:var(--text-dim);
+}
+#cycle-title-card .ct-process{
+  display:flex;align-items:center;gap:5px;
+  font-size:10px;color:var(--text-muted);margin-top:3px;
+}
+.ct-dot{width:6px;height:6px;border-radius:50%;background:var(--accent)}
+.course-ref{
+  margin-top:12px;padding-top:10px;border-top:1px solid var(--border);
+  font-size:10px;color:var(--text-dim);display:flex;align-items:center;gap:5px;
+}
+.course-ref-badge{
+  font-size:9px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;
+  padding:2px 6px;border-radius:3px;
+  background:color-mix(in srgb,var(--accent) 10%,transparent);
+  color:var(--accent);border:1px solid color-mix(in srgb,var(--accent) 25%,transparent);
+}
+
+/* ─── HUMAN IMPACT TOGGLE ────────────────────── */
+#impact-toggle{
+  position:absolute;top:16px;right:16px;z-index:20;
+  display:flex;align-items:center;gap:10px;
+  background:rgba(8,13,22,.85);backdrop-filter:blur(8px);
+  border:1px solid var(--border);border-radius:10px;padding:10px 14px;
+  font-size:12px;color:var(--text-muted);cursor:pointer;
+  transition:border-color .2s;
+}
+#impact-toggle:hover{border-color:var(--accent)}
+#impact-toggle.active{border-color:#ef4444;color:#f87171}
+.toggle-track{
+  width:32px;height:18px;border-radius:9px;background:var(--border);
+  position:relative;transition:background .2s;flex-shrink:0;
+}
+#impact-toggle.active .toggle-track{background:#ef4444}
+.toggle-thumb{
+  position:absolute;top:2px;left:2px;width:14px;height:14px;
+  border-radius:50%;background:#fff;transition:left .2s;
+}
+#impact-toggle.active .toggle-thumb{left:16px}
+
+/* ─── SCROLLBAR ──────────────────────────────── */
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+
+/* ─── RESPONSIVE ─────────────────────────────── */
+@media(max-width:768px){
+  #info-panel{width:100%;top:auto;bottom:0;left:0;right:0;
+    height:50%;border-left:none;border-top:1px solid var(--border);
+    transform:translateY(100%);
+  }
+  #info-panel.collapsed{transform:translateY(100%)}
+  #info-panel:not(.collapsed){transform:translateY(0)}
+  .cycles-grid{grid-template-columns:1fr}
+  .home-hero h1{font-size:28px}
+}
+</style>
+</head>
+<body>
+
+<div id="app-header">
+  <div class="logo">
+    <div class="dot" id="accent-dot"></div>
+    <div>
+      <div>Biogeochemical Cycles</div>
+      <div class="subtitle">SOS 110 &nbsp;·&nbsp; Ryan Cornell</div>
+    </div>
+  </div>
+  <div id="cycle-nav"></div>
+  <button id="back-btn" onclick="showHome()">← All Cycles</button>
+</div>
+
+<!-- HOME VIEW -->
+<div id="home-view" class="view-active">
+  <div class="home-hero">
+    <h1>Earth's <span>Essential Cycles</span></h1>
+    <p>Explore the biogeochemical processes that sustain life on Earth — from the carbon dioxide you exhale to the nitrogen in your DNA.</p>
+  </div>
+  <div class="cycles-grid" id="cycles-grid"></div>
+</div>
+
+<!-- CYCLE VIEW -->
+<div id="cycle-view">
+  <div id="diagram-area">
+    <svg id="diagram-svg" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="var(--accent)"/>
+        </marker>
+        <filter id="glow">
+          <feGaussianBlur stdDeviation="3" result="blur"/>
+          <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+      </defs>
+    </svg>
+    <canvas id="particle-canvas"></canvas>
+    <div id="nodes-layer"></div>
+    <div id="welcome-panel">
+      <div class="welcome-label">How to explore</div>
+      <div class="welcome-hint">Click a reservoir node to see details, or hover over an arrow to see the process.</div>
+    </div>
+    <div id="cycle-title-card">
+      <div class="ct-name" id="ct-name"></div>
+      <div class="ct-tagline" id="ct-tagline"></div>
+      <div class="ct-key">Key Processes</div>
+      <div id="ct-processes"></div>
+      <div class="course-ref">
+        <span class="course-ref-badge">SOS 110</span>
+        Ch. 10 · Montgomery &amp; Sherman
+      </div>
+    </div>
+    <div id="impact-toggle" onclick="toggleImpact()">
+      <span>Human Impact</span>
+      <div class="toggle-track"><div class="toggle-thumb"></div></div>
+    </div>
+    <div id="legend">
+      <div class="leg-row"><div class="leg-line"></div> Natural flux</div>
+      <div class="leg-row"><div class="leg-dot"></div> Reservoir</div>
+    </div>
+  </div>
+  <div id="info-panel" class="collapsed">
+    <div class="panel-header" style="position:relative">
+      <div class="panel-badge" id="panel-badge">Reservoir</div>
+      <div class="panel-title" id="panel-title">—</div>
+      <div class="panel-subtitle" id="panel-subtitle"></div>
+      <button class="panel-close" onclick="deselectNode()" title="Close">✕</button>
+    </div>
+    <div class="panel-body" id="panel-body"></div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════
+// CYCLE DATA
+// ═══════════════════════════════════════════════
+const CYCLES = {
+
+  // ── CARBON CYCLE ──────────────────────────────
+  carbon: {
+    name: "Carbon Cycle",
+    tagline: "The backbone of all organic molecules",
+    icon: "⚛️",
+    color: "#14b8a6",
+    glow: "rgba(20,184,166,.35)",
+    dimAccent: "rgba(20,184,166,.06)",
+    tags: ["Photosynthesis", "Respiration", "Ocean Flux", "Climate"],
+    description: "Carbon cycles through the atmosphere, biosphere, hydrosphere, and lithosphere — driving climate, fueling life, and shaping Earth's history.",
+    keyProcesses: ["Photosynthesis", "Respiration", "Decomposition", "Ocean exchange"],
+    nodes: [
+      {id:"atm",   label:"Atmosphere", icon:"🌤", x:57, y:17,
+       reservoir:"~870 GtC",
+       tagline:"CO₂ — cycling between life, land, and ocean",
+       description:"The cycling of carbon from sinks in the lithosphere to the atmosphere and hydrosphere helps us understand the effects of industries and fossil fuel use on the environment, especially climate change. CO₂ is removed from the atmosphere by photosynthesis and dissolves into seawater to form carbonic acid (H₂CO₃). Land-use activities — reducing the quantity and health of trees and plants — also influence CO₂ levels.",
+       stats:[{l:"Current CO₂ (NOAA, 2024)",v:"~422 ppm"},{l:"Pre-industrial CO₂",v:"~280 ppm"},{l:"Atm. C pool (GCP, 2023)",v:"~880 GtC"}],
+       fact:"The atmosphere's carbon pool has grown from ~595 GtC (280 ppm) before industrialization to ~880 GtC today — an increase of roughly 285 GtC, enough to warm the planet approximately 1.2°C so far. This is primarily the result of fossil fuel combustion and deforestation.",
+       impact:"Human emissions add ~10 GtC/yr to the atmosphere. CO₂ dissolves into ocean water to form carbonic acid (H₂CO₃) — causing ocean acidification and making it more difficult for marine organisms to build and maintain their shells.",
+       sources:"CO₂ concentration: NOAA Global Monitoring Laboratory (2024). Pool size: Global Carbon Project (2023)."},
+      {id:"plants", label:"Land Plants & Soil", icon:"🌿", x:22, y:42,
+       reservoir:"~2,600 GtC",
+       tagline:"Terrestrial biosphere — photosynthesis and respiration",
+       description:"The biosphere plays an important part in the carbon cycle. Photosynthesis pulls CO₂ out of the atmosphere to convert it into sugar and O₂. Consumers of photosynthesizing organisms use the resulting organic molecules for energy, and eventually return CO₂ back into the atmosphere through respiration and decomposition.",
+       stats:[{l:"Plant biomass (GCP, 2023)",v:"~550 GtC"},{l:"Soil organic C (IPCC AR6)",v:"~1,500 GtC"},{l:"Combined",v:"~2,600 GtC"}],
+       fact:"As humans reduce the quantity and health of trees and plants that draw CO₂ out of the atmosphere, this greenhouse gas increases and contributes to climate change. Forests are both a critical carbon sink and our primary tool for managing atmospheric CO₂.",
+       impact:"Land-use activities — especially deforestation — influence CO₂ in our atmosphere. When forests are cleared, stored carbon is released and future photosynthetic uptake is lost.",
+       sources:"Carbon stocks: Global Carbon Project (2023); IPCC AR6 WGI Ch. 5 (2021)."},
+      {id:"soil",  label:"Soil & Decomposers", icon:"🍂", x:36, y:68,
+       reservoir:"~1,500 GtC",
+       tagline:"Decomposition & methanogens — CO₂ and CH₄ release",
+       description:"Carbon can move from the biosphere to the atmosphere through decomposing microorganisms known as methanogens. Methanogens release methane (CH₄) as a by-product into the atmosphere. Methanogens thrive in oxygen-free (anoxic) environments, such as wetlands, hot springs, hydrothermal vents in the ocean, and in animal digestive tracts. Cattle release CH₄ from their guts through belching, flatulence, and defecation.",
+       stats:[{l:"Soil organic C (IPCC AR6)",v:"~1,500 GtC"},{l:"Soil respiration",v:"~60 GtC/yr"},{l:"Methanogens active in",v:"Wetlands, guts, hot springs"}],
+       fact:"Cattle release CH₄ from their guts through belching, flatulence, and defecation. Methane is a powerful greenhouse gas — far more potent than CO₂ over a 20-year period — making livestock methane a significant climate driver.",
+       impact:"As permafrost soils thaw due to warming, methanogens become active and release large amounts of CO₂ and CH₄ — a positive feedback loop that amplifies climate change.",
+       sources:"Soil C stock: IPCC AR6 WGI Ch. 5 (2021); methanogen data: Conrad (2009), Nature Reviews Microbiology."},
+      {id:"ocean", label:"Ocean", icon:"🌊", x:78, y:42,
+       reservoir:"~38,000 GtC",
+       tagline:"CO₂ sink — forms carbonic acid (ocean acidification)",
+       description:"Most of Earth's carbon is stored in the lithosphere, but a significant share dissolves into seawater and atmospheric water to form carbonic acid (H₂CO₃) — leading to ocean acidification and acid rain. Ocean acidification makes maintaining shells more difficult for marine organisms. Some marine organisms like clams and sand dollars combine calcium and bicarbonate to construct external skeletons called shells. When they die, their calcium carbonate shells settle on the ocean floor and become limestone.",
+       stats:[{l:"Ocean C (IPCC AR6, 2021)",v:"~38,000 GtC"},{l:"Annual CO₂ uptake",v:"~2.6 GtC/yr"},{l:"pH drop since 1750",v:"~0.1 units"}],
+       fact:"When limestone on the ocean floor is incorporated into CO₂-rich magma and erupted back to the surface through volcanoes, geologically ancient carbon returns to the atmosphere — completing a geological carbon cycle that spans millions of years.",
+       impact:"Ocean acidification — carbonic acid (H₂CO₃) forming from dissolved CO₂ — makes maintaining shells more difficult for marine organisms like clams and coral, threatening marine ecosystems worldwide.",
+       sources:"Ocean carbon stock: IPCC AR6 WGI Ch. 5 (2021); uptake rate: Global Carbon Project (2023)."},
+      {id:"fossil",label:"Fossil Fuels", icon:"⛽", x:64, y:72,
+       reservoir:"~4,000 GtC",
+       tagline:"Ancient buried carbon — the primary human perturbation",
+       description:"Coal, oil, and natural gas represent organic carbon buried over millions of years after exposure to high temperatures and pressure. When humans extract coal, oil, and gas from the ground, we transfer carbon that had been locked up beneath Earth's surface for millions of years into the atmosphere, where it accumulates. Cement production — a process known as calcination — transforms calcium carbonate in limestone into calcium oxide and releases CO₂. Calcination and fossil-fuel burning used in calcination account for 5% of human-caused CO₂ emissions.",
+       stats:[{l:"Calcination/cement",v:"~5% of human CO₂"},{l:"Cumulative burned (GCP)",v:"~475 GtC (1750–now)"},{l:"Proven reserves",v:"~4,000 GtC"}],
+       fact:"Calcination and fossil-fuel burning used in cement production account for 5% of human-caused CO₂ emissions. The most significant impact on Earth's carbon cycle is human use of fossil fuels.",
+       impact:"When humans extract and burn coal, oil, and gas, we transfer carbon locked beneath Earth's surface for millions of years into the atmosphere, where it accumulates — driving climate change.",
+       sources:"Cumulative emissions: Global Carbon Project (2023); reserves estimate: BP Statistical Review (2023)."},
+      {id:"rocks", label:"Lithosphere", icon:"🪨", x:50, y:87,
+       reservoir:"~66,000,000 GtC",
+       tagline:"Earth's primary carbon sink — geological timescales",
+       description:"Most of Earth's carbon is stored in the lithosphere. The cycling of carbon from these lithosphere sinks to the atmosphere and hydrosphere helps us understand the effects of industries and fossil fuel use. Some marine organisms like clams and sand dollars combine calcium and bicarbonate to construct shells. When they die, their calcium carbonate shells settle on the ocean floor and become limestone, which over long periods of time is incorporated into CO₂-rich magma that may be erupted back to the surface through volcanoes.",
+       stats:[{l:"Carbonate rocks",v:"~60,000,000 GtC"},{l:"Volcanic outgassing",v:"~0.1 GtC/yr"},{l:"Human addition (calcination)",v:"~5% of human CO₂"}],
+       fact:"When carbonate rocks are heated deep in Earth's crust and erupted as magma, CO₂-rich gases are released back to the atmosphere — completing a geological carbon cycle that spans millions of years. The shells of ancient sea creatures are literally the rock under our feet.",
+       impact:"Cement production (calcination) transforms calcium carbonate in limestone into calcium oxide and releases CO₂. Calcination and fossil-fuel burning used in calcination account for 5% of human-caused CO₂ emissions.",
+       sources:"Lithosphere C estimate: Falkowski et al. (2000), Science 290; volcanic flux: IPCC AR6 WGI Ch. 5 (2021)."}
+    ],
+    edges: [
+      {from:"atm",  to:"plants",flux:"~120 GtC/yr",label:"Photosynthesis",
+       desc:"Plants use sunlight to convert CO₂ + H₂O → glucose + O₂. Gross Primary Production (GPP) absorbs ~120 GtC/yr globally.",bidirectional:false,importance:5},
+      {from:"plants",to:"atm",flux:"~60 GtC/yr",label:"Plant Respiration",
+       desc:"Plants use ~half of what they fix in their own metabolism, releasing CO₂ back to the atmosphere. Net Primary Production = GPP − Respiration.",bidirectional:false,importance:4,labelT:0.78},
+      {from:"plants",to:"soil",flux:"~60 GtC/yr",label:"Litter & Death",
+       desc:"Dead leaves, roots, and woody debris enter the soil as organic matter, where decomposers break it down.",bidirectional:false,importance:3},
+      {from:"soil", to:"atm", flux:"~60 GtC/yr",label:"Decomposition",
+       desc:"Soil microbes respire organic matter back to CO₂. Soil respiration is the second-largest flux in the carbon cycle.",bidirectional:false,importance:4},
+      {from:"atm",  to:"ocean",flux:"~2.6 GtC/yr",label:"Ocean Absorption",
+       desc:"CO₂ dissolves in seawater through Henry's Law. Cold, high-latitude waters absorb CO₂; warm tropical waters outgas it.",bidirectional:true,importance:3},
+      {from:"fossil",to:"atm",flux:"~10 GtC/yr",label:"Combustion",
+       desc:"Burning coal, oil, and gas releases ancient stored carbon. This is the most significant human impact on Earth's carbon cycle — transferring carbon locked beneath Earth's surface for millions of years into the atmosphere, where it accumulates.",bidirectional:false,importance:5,human:true},
+      {from:"plants",to:"atm",flux:"~1.6 GtC/yr",label:"Deforestation",
+       desc:"Land-use activities influence CO₂ in our atmosphere. As humans reduce the quantity and health of trees and plants that draw CO₂ out of the atmosphere, this greenhouse gas increases and contributes to climate change. Clearing forests for agriculture releases stored carbon and permanently reduces future CO₂ uptake.",bidirectional:false,importance:4,human:true,labelT:0.3},
+      {from:"ocean",to:"rocks",flux:"~0.2 GtC/yr",label:"Sedimentation",
+       desc:"Marine organisms (foraminifera, coccolithophores) build shells from dissolved calcium carbonate, which sink to the ocean floor and eventually form limestone.",bidirectional:false,importance:2,labelT:0.85},
+      {from:"rocks",to:"atm",flux:"~0.1 GtC/yr",label:"Volcanism",
+       desc:"Volcanic activity returns deep crustal carbon to the atmosphere as CO₂. Without this, the long-term carbon cycle would lose carbon permanently to rock.",bidirectional:false,importance:2}
+    ]
+  },
+
+  // ── NITROGEN CYCLE ────────────────────────────
+  nitrogen: {
+    name: "Nitrogen Cycle",
+    tagline: "From inert gas to amino acids and back",
+    icon: "🧬",
+    color: "#a855f7",
+    glow: "rgba(168,85,247,.35)",
+    dimAccent: "rgba(168,85,247,.06)",
+    tags: ["Fixation", "Nitrification", "Denitrification", "Fertilizers"],
+    description: "Nitrogen is one of the key components of DNA and proteins. About 78–80% of Earth's atmosphere is nitrogen gas — yet it's a stable, nonreactive form biologically unusable to most organisms. A remarkable chain of microbes transforms it into useful forms and back again.",
+    keyProcesses: ["N₂ Fixation", "Nitrification", "Denitrification", "Ammonification"],
+    nodes: [
+      {id:"n_atm",  label:"Atmosphere (N₂)", icon:"💨", x:55, y:17,
+       reservoir:"~78% of atmosphere",
+       tagline:"Inert nitrogen gas — abundant but mostly inaccessible",
+       description:"About 78% of Earth's atmosphere is made up of nitrogen gas (N₂) — a stable, nonreactive form that is biologically unusable to humans and most other organisms. (The textbook rounds this to ~80%.) Animals get nitrogen from organic compounds such as proteins in plants and animals they consume.",
+       stats:[{l:"N₂ in atmosphere",v:"~78% (by volume)"},{l:"Biologically usable?",v:"No — N≡N bond too strong"},{l:"Lightning fixation",v:"~5 TgN/yr"}],
+       fact:"Despite making up most of the air you breathe, you cannot use nitrogen gas directly. The N≡N triple bond is one of the strongest in chemistry — breaking it requires specialized enzymes (nitrogenase) or extreme industrial conditions (~450°C, 200 atm in the Haber–Bosch process).",
+       impact:"Humans chemically fix nitrogen through the energy-intensive Haber–Bosch process to produce half a million tons of synthetic fertilizers daily — roughly doubling the rate of reactive nitrogen entering ecosystems.",
+       sources:"Atmospheric N₂ pool: Fowler et al. (2013), Nature Geoscience 6; lightning fixation: Galloway et al. (2004), Biogeochemistry 70."},
+      {id:"n_fix",  label:"N-Fixing Bacteria", icon:"🦠", x:18, y:35,
+       reservoir:"~0.2 TgN",
+       tagline:"Biological nitrogen fixation — key to all life",
+       description:"Specialized bacteria called diazotrophs possess a nitrogenase enzyme that uses free N₂ from the air, along with hydrogen, to produce ammonia (NH₃). Bacteria in the genus Rhizobium have mutualistic relationships with legume plants: they live in root nodules and are fed sugar by the plant, but in return they provide fixed nitrogen for both the bacteria and the legume.",
+       stats:[{l:"Bio. fixation rate",v:"~120 TgN/yr"},{l:"Industrial (Haber-Bosch)",v:"~120 TgN/yr"},{l:"Haber-Bosch output",v:"500,000 t/day"}],
+       fact:"Scientists are trying to genetically engineer nitrogen-fixing genes into non-legume crops (like wheat and corn) — which would dramatically reduce the need for synthetic fertilizers and their environmental impacts.",
+       impact:"Half of the synthetic nitrogen fertilizers produced by the Haber–Bosch process are taken up by plants, while the rest is lost to water and air — causing water pollution and greenhouse gas (N₂O) emissions.",
+       sources:"Global fixation rates (~120 TgN/yr biological, ~120 TgN/yr industrial): Fowler et al. (2013), Phil. Trans. R. Soc. B 368. Haber–Bosch daily output: Ch. 10, Slide 27."},
+      {id:"n_plant",label:"Plants", icon:"🌱", x:22, y:55,
+       reservoir:"~14 TgN",
+       tagline:"Building proteins and DNA from soil nitrogen",
+       description:"To build proteins and DNA, plants need nitrogen compounds dissolved in water, taken up by their roots from the soil. Plants absorb ammonium (NH₄⁺) and nitrate (NO₃⁻), incorporating nitrogen into amino acids, proteins, nucleic acids (DNA/RNA), and chlorophyll.",
+       stats:[{l:"N in plant biomass",v:"~14 TgN"},{l:"Annual uptake",v:"~1,200 TgN/yr"},{l:"N in chlorophyll",v:"Key component"}],
+       fact:"Nitrogen is one of the key components of DNA and proteins — proteins being the primary structural component of muscle tissue and an important participant in countless bodily processes. Every protein molecule in your body traces its nitrogen back to soil bacteria.",
+       impact:"Excess nitrogen fertilizers run into freshwater and marine systems, resulting in eutrophication and dead zones — algae blooms that deplete oxygen and kill aquatic life.",
+       sources:"Plant N pool (~14 TgN) and annual uptake (~1,200 TgN/yr): Schlesinger & Bernhardt (2020), Biogeochemistry, 4th ed.; Galloway et al. (2004), Biogeochemistry 70."},
+      {id:"n_anim", label:"Animals", icon:"🐄", x:48, y:68,
+       reservoir:"~0.6 TgN",
+       tagline:"Consumers in the nitrogen chain",
+       description:"Animals obtain nitrogen by consuming plants or other animals — getting it from organic compounds such as proteins. Nitrogen is used in proteins and nucleic acids. Excess nitrogen is excreted as urea (mammals) or uric acid (birds/reptiles), returning it to the environment.",
+       stats:[{l:"Animal biomass N",v:"~0.6 TgN"},{l:"Primary excretion",v:"Urea (mammals)"},{l:"N efficiency",v:"10–40% transferred"}],
+       fact:"Only about 10% of the nitrogen in plant biomass transfers to herbivores at each trophic level — the rest is lost to excretion and decomposition. This is why plant-based diets have a much lower nitrogen footprint than meat-based ones.",
+       impact:"Livestock operations produce large amounts of nitrogen-rich waste. Dissolved ammonium and nitrate from agricultural sources are the leading contaminant of public drinking water in the United States.",
+       sources:"Animal biomass N pool and ~10% trophic transfer efficiency: Schlesinger & Bernhardt (2020), Biogeochemistry, 4th ed."},
+      {id:"n_soil", label:"Soil (NH₄⁺ / NO₃⁻)", icon:"🌍", x:50, y:88,
+       reservoir:"~95 TgN",
+       tagline:"Inorganic nitrogen pool — nitrification hub",
+       description:"Soil contains both ammonium (NH₄⁺, which binds to soil particles) and nitrate (NO₃⁻, which is mobile and leaches into groundwater). Most ammonia undergoes nitrification, where microorganisms convert ammonia to other nitrogen compounds (NH₄⁺ → NO₂⁻ → NO₃⁻) in a two-step process.",
+       stats:[{l:"Soil inorganic N",v:"~95 TgN"},{l:"Soil organic N",v:"~95,000 TgN"},{l:"Nitrification",v:"NH₄⁺→NO₂⁻→NO₃⁻"}],
+       fact:"A single teaspoon of fertile soil contains ~1 billion bacteria, many involved in the nitrogen cycle through ammonification, nitrification, and denitrification. The soil food web is as complex as any ecosystem above ground.",
+       impact:"Dissolved ammonium and nitrate from synthetic fertilizers are the leading contaminant of public drinking water in the US. Solutions include applying fertilizer only when crops can absorb it, minimizing tillage to reduce runoff, and maintaining vegetated buffers between fields and waterways.",
+       sources:"Soil inorganic and organic N pools: Batjes (1996), European J. Soil Science 47; Galloway et al. (2004), Biogeochemistry 70. Management solutions: Ch. 10, Slide 29."},
+      {id:"n_decomp",label:"Decomposers", icon:"🍄", x:78, y:52,
+       reservoir:"~0.5 TgN",
+       tagline:"Ammonification — returning N to the soil",
+       description:"Some bacteria and fungi use a process called ammonification: they break down nitrogen compounds in animal waste products and dead plant/animal matter, releasing ammonia (NH₃). This returned ammonia then undergoes nitrification in the soil, re-entering the pool available to plants.",
+       stats:[{l:"Decomp. fungi",v:"~0.5 TgN biomass"},{l:"Process",v:"Ammonification"},{l:"Product",v:"NH₃ → NH₄⁺"}],
+       fact:"Fungi are master decomposers — their hyphae can penetrate woody material and break down lignin, one of the hardest organic molecules to degrade. Without decomposers, nitrogen would remain locked in dead organic matter indefinitely.",
+       impact:"Disrupted decomposition (e.g., in waterlogged soils) can lead to organic matter accumulation and CH₄ production instead of normal N cycling.",
+       sources:"Microbial biomass N estimate: Schlesinger & Bernhardt (2020), Biogeochemistry, 4th ed. Ammonification process: Ch. 10, Slide 26."},
+      {id:"n_denit",label:"Denitrifiers", icon:"🔵", x:78, y:35,
+       reservoir:"N/A",
+       tagline:"Returning N₂ gas to the atmosphere",
+       description:"Other microorganisms underground or underwater undergo denitrification: they use nitrogen compounds for respiration and return N₂ gas to the atmosphere. These anaerobic bacteria (Pseudomonas, Paracoccus) convert NO₃⁻ → N₂ (and some N₂O). This process closes the nitrogen cycle.",
+       stats:[{l:"Denitrification rate",v:"~200 TgN/yr"},{l:"Products",v:"N₂, N₂O"},{l:"Conditions",v:"Anaerobic (no O₂)"}],
+       fact:"The greenhouse gas N₂O (nitrous oxide, 'laughing gas') is a byproduct of denitrification. It has 265× the warming potential of CO₂ and persists in the atmosphere for 114 years — making excess agricultural fertilizer a significant climate driver.",
+       impact:"Agricultural soils are the largest source of N₂O emissions — excess fertilizer increases denitrification and N₂O release. Reducing fertilizer use and improving application timing can significantly cut these emissions.",
+       sources:"Denitrification flux (~200 TgN/yr): Galloway et al. (2004), Biogeochemistry 70. N₂O 100-year global warming potential (265×) and atmospheric lifetime (114 yr): IPCC AR5 WGI (2013), Ch. 8."}
+    ],
+    edges: [
+      {from:"n_atm", to:"n_fix",flux:"~120 TgN/yr",label:"N₂ Fixation (Bio.)",
+       desc:"Diazotrophic bacteria (Rhizobium, cyanobacteria, Azotobacter) use the nitrogenase enzyme to convert inert N₂ from the air into soluble ammonium (NH₄⁺) or nitrate (NO₃⁻) ions that plants, algae, and bacteria can use.",bidirectional:false,importance:5},
+      {from:"n_fix", to:"n_soil",flux:"~120 TgN/yr",label:"N Input to Soil",
+       desc:"Fixed nitrogen (NH₃/NH₄⁺) enters the soil pool. Rhizobium in legume root nodules provide fixed nitrogen directly to the host plant and to the surrounding soil.",bidirectional:false,importance:4,labelT:0.72},
+      {from:"n_soil",to:"n_plant",flux:"~1,200 TgN/yr",label:"Plant Uptake",
+       desc:"Plant roots absorb dissolved NH₄⁺ and NO₃⁻ from soil water. Nitrogen is incorporated into amino acids, proteins, and nucleic acids (DNA/RNA) — the building blocks of all living tissue.",bidirectional:false,importance:5},
+      {from:"n_plant",to:"n_anim",flux:"Variable",label:"Consumption",
+       desc:"Herbivores and omnivores consume plant tissue, transferring organic nitrogen up the food web. Animals get nitrogen from organic compounds such as proteins in the plants and animals they consume.",bidirectional:false,importance:3,labelT:0.28},
+      {from:"n_anim",to:"n_decomp",flux:"Variable",label:"Excretion & Death",
+       desc:"Animal waste (urea, uric acid) and dead tissue enter the decomposer community. Urea is rapidly converted to NH₄⁺ by soil urease enzymes, making it available for nitrification.",bidirectional:false,importance:3,labelT:0.35},
+      {from:"n_plant",to:"n_decomp",flux:"Variable",label:"Plant Death",
+       desc:"Dead plant matter (leaf litter, roots) is decomposed by bacteria and fungi through ammonification, releasing organic N back to the soil as ammonia.",bidirectional:false,importance:3,labelT:0.62},
+      {from:"n_decomp",to:"n_soil",flux:"Variable",label:"Ammonification",
+       desc:"Decomposers break proteins and nucleic acids back to ammonia (NH₃), which becomes ammonium (NH₄⁺) in soil — regenerating the inorganic nitrogen pool for plant uptake.",bidirectional:false,importance:4,labelT:0.28},
+      {from:"n_soil",to:"n_soil",flux:"NH₄⁺ → NO₂⁻ → NO₃⁻",label:"Nitrification",
+       desc:"Within the soil, microorganisms convert ammonia to other nitrogen compounds in a two-step process (NH₄⁺ → NO₂⁻ → NO₃⁻). Most ammonia produced by ammonification undergoes nitrification, generating the mobile nitrate (NO₃⁻) that plants take up and that denitrifiers later return to the atmosphere as N₂ gas.",bidirectional:false,importance:4,loopX:115,loopY:0},
+      {from:"n_soil",to:"n_denit",flux:"~200 TgN/yr",label:"Denitrification",
+       desc:"Anaerobic microorganisms underground or underwater use NO₃⁻ for respiration, returning N₂ gas (and some N₂O) to the atmosphere. Occurs in waterlogged soils, wetlands, and ocean sediments.",bidirectional:false,importance:4},
+      {from:"n_denit",to:"n_atm",flux:"~200 TgN/yr",label:"N₂ Release",
+       desc:"Denitrification completes the cycle by returning inert N₂ to the atmosphere, counterbalancing biological and industrial fixation.",bidirectional:false,importance:4},
+      {from:"n_atm", to:"n_soil",flux:"~5 TgN/yr",label:"Lightning Fixation",
+       desc:"Lightning breaks the N≡N bond, triggering a series of reactions that produce nitrate ions (NO₃⁻) that fall to Earth's surface in precipitation — a natural but minor pathway of nitrogen fixation.",bidirectional:false,importance:2,labelT:0.3},
+      {from:"n_atm", to:"n_soil",flux:"~500,000 t/day",label:"Haber-Bosch (Industrial)",
+       desc:"Humans chemically fix nitrogen through the energy and resource intensive Haber–Bosch process to produce half a million tons of synthetic fertilizers daily for agriculture. Half of the synthetic nitrogen fertilizers are taken up by plants, while the rest is lost to water and air — making dissolved ammonium and nitrate the leading contaminant of public drinking water in the United States.",bidirectional:false,importance:5,human:true,labelT:0.44}
+    ]
+  },
+
+  // ── PHOSPHORUS CYCLE ──────────────────────────
+  phosphorus: {
+    name: "Phosphorus Cycle",
+    tagline: "The limiting nutrient with no atmospheric phase",
+    icon: "🔺",
+    color: "#f59e0b",
+    glow: "rgba(245,158,11,.35)",
+    dimAccent: "rgba(245,158,11,.06)",
+    tags: ["Weathering", "Eutrophication", "Sediment", "Fertilizer"],
+    description: "Unlike carbon and nitrogen, phosphorus has no atmospheric form — it cycles only through land and water, making it a critical limiting nutrient for life.",
+    keyProcesses: ["Rock Weathering", "Plant Uptake", "Runoff", "Sedimentation"],
+    nodes: [
+      {id:"p_rocks",  label:"Rocks & Minerals", icon:"⛰️", x:57, y:17,
+       reservoir:"~4×10¹⁸ gP",
+       tagline:"Primary source of all phosphorus",
+       description:"Phosphate rock (apatite minerals) is the ultimate source of all biological phosphorus. Phosphorus is used as a fertilizer, in detergents, and in steel production — and is extracted from the lithosphere by mining apatite. Phosphorus does not enter the atmosphere, cycling only through the lithosphere and hydrosphere — and doing so very slowly.",
+       stats:[{l:"Main mineral",v:"Apatite"},{l:"Global reserves (USGS, 2023)",v:"~71,000 million MT"},{l:"Reserve status",v:"Rapidly depleting"}],
+       fact:"Earth's phosphorus reserves are rapidly depleting due to agricultural fertilizer runoff and excess phosphorus excreted as human waste. Some wastewater treatment facilities recapture phosphorus from human waste — but the cost is currently expensive.",
+       impact:"Mining phosphate rock for fertilizers has dramatically accelerated the phosphorus cycle. The amount of phosphorus running into the oceans each year has tripled due to human activity.",
+       sources:"Reserve data: USGS Mineral Commodity Summaries (2023). Reservoir size: Filippelli (2008), Elements 4(2)."},
+      {id:"p_soil",   label:"Soil", icon:"🌍", x:45, y:38,
+       reservoir:"~200 PgP",
+       tagline:"Available and unavailable phosphate",
+       description:"Soil phosphorus exists in organic forms (bound in humus) and inorganic forms (phosphate ions in solution). Plants can only use dissolved H₂PO₄⁻ and HPO₄²⁻, making soil pH and microbial activity critical.",
+       stats:[{l:"Available soil P",v:"Very low (μg/L)"},{l:"Optimal soil pH",v:"6–7 for P uptake"},{l:"Mycorrhizal role",v:"Enhances uptake"}],
+       fact:"Mycorrhizal fungi extend the effective root surface area by up to 1,000× — the plant-fungus partnership is crucial for phosphorus uptake, especially in P-poor soils.",
+       impact:"Excess phosphate from fertilizers and manure accumulates in soils, eventually reaching waterways.",
+       sources:"Mycorrhizal enhancement of P uptake (up to ~1,000× root surface area): Smith & Read (2008), Mycorrhizal Symbiosis, 3rd ed."},
+      {id:"p_plants", label:"Plants", icon:"🌿", x:18, y:55,
+       reservoir:"~600 MtP",
+       tagline:"Phosphorus in living biomass",
+       description:"Phosphates are ionized forms of phosphorus and are key components of: DNA and RNA (which hold the genetic instructions for cells to develop and reproduce), ATP and ADP (which transport energy within cells), and phospholipids (which form cell membranes). Plants need phosphorus dissolved in water, absorbed through their roots from the soil.",
+       stats:[{l:"In DNA/RNA",v:"Backbone of genetic material"},{l:"In ATP/ADP",v:"Energy transport"},{l:"In cell membranes",v:"Phospholipid bilayer"}],
+       fact:"Phosphorus is one of the building blocks of all living cells on Earth. The phosphorus in every ATP molecule you use for energy — whether you're thinking, moving, or breathing — was once locked in apatite rock in the lithosphere.",
+       impact:"Global crop production depends on synthetic phosphate fertilizers derived from mined rock — a non-renewable resource that is rapidly depleting.",
+       sources:"Biomass P estimate: Elser et al. (2007), Ecology Letters 10(12)."},
+      {id:"p_anim",   label:"Animals", icon:"🐟", x:18, y:75,
+       reservoir:"~120 MtP",
+       tagline:"Bones, teeth, and ATP",
+       description:"Animals concentrate phosphorus in bones and teeth (as hydroxyapatite) and use it in DNA, RNA, and ATP. Humans are ~1% phosphorus by mass — about 700g in an adult body.",
+       stats:[{l:"P in human body",v:"~700g (adult)"},{l:"In bone/teeth",v:"~85% of body P"},{l:"In ATP",v:"3 phosphate groups"}],
+       fact:"The phosphorus in your bones will eventually return to the soil after you die and decompose — contributing to the local phosphorus cycle, just as animals have for millions of years.",
+       impact:"Wastewater from cities and farms is a major source of phosphorus entering waterways.",
+       sources:"Human body phosphorus content (~1% by mass, ~700g, ~85% in bone/teeth): ICRP Publication 23 (1975), Reference Man."},
+      {id:"p_decomp", label:"Decomposers", icon:"🦠", x:42, y:65,
+       reservoir:"Small",
+       tagline:"Releasing organic P back to soil",
+       description:"When organisms die, microbial decomposers break down organic phosphorus compounds, releasing phosphate ions (mineralization) back into the soil solution for plant uptake.",
+       stats:[{l:"Process",v:"Mineralization"},{l:"Key enzymes",v:"Phosphatases"},{l:"Rate",v:"pH and temp. dependent"}],
+       fact:"Phosphatase enzymes, produced by plant roots and soil microbes, can cleave phosphate from organic molecules — essentially 'mining' the organic pool when inorganic P is scarce.",
+       impact:"Disrupted decomposition (e.g., tillage, acidification) reduces P recycling efficiency."},
+      {id:"p_water",  label:"Rivers & Lakes", icon:"🏞️", x:72, y:48,
+       reservoir:"~0.09 PgP",
+       tagline:"Freshwater phosphorus transport & eutrophication",
+       description:"Rivers transport dissolved and particulate phosphorus from land to the ocean. In large doses, phosphorus can alter marine and freshwater ecosystems through eutrophication — a process where environments are enriched with nutrients, causing rapid growth, death, and decomposition of algae and phytoplankton. This decomposition consumes and depletes oxygen levels in the water, harming oxygen-dependent organisms. These nutrients come mostly from agricultural runoff, industrial processes, livestock, and burning of fossil fuels.",
+       stats:[{l:"Key process",v:"Eutrophication"},{l:"P sources",v:"Ag. runoff, industry, livestock"},{l:"Result",v:"Algae bloom → O₂ depletion"}],
+       fact:"The greatest source of both nitrogen and phosphorus entering the Gulf of Mexico is fertilizers from urban and agricultural runoff — creating one of the world's largest marine 'dead zones' where oxygen depletion kills aquatic life.",
+       impact:"The amount of phosphorus running into the oceans each year has tripled due to human activity, with eutrophication spreading across freshwater and coastal marine systems worldwide.",
+       sources:"River P flux: Beusen et al. (2016), Global Biogeochemical Cycles 30(7)."},
+      {id:"p_ocean",  label:"Ocean", icon:"🌊", x:82, y:72,
+       reservoir:"~87,000 PgP",
+       tagline:"Long-term sink — eutrophication endpoint",
+       description:"The ocean receives phosphorus carried by rivers from the continents. The amount of phosphorus running into the oceans each year has tripled due to human activities. In large doses, this phosphorus triggers eutrophication in coastal marine ecosystems — rapid algae growth, death, and decomposition that depletes oxygen and harms marine life.",
+       stats:[{l:"Tripled",v:"P input to oceans (human)"},{l:"Primary driver",v:"Agricultural and urban runoff"},{l:"Ocean P (Filippelli, 2008)",v:"~87,000 PgP"}],
+       fact:"Many of the world's most productive fisheries are located where phosphorus-rich deep water upwells naturally to the surface, fueling phytoplankton growth. Human-added phosphorus through runoff disrupts this natural balance.",
+       impact:"Eutrophication from phosphorus and nitrogen runoff creates 'dead zones' in coastal oceans — the Gulf of Mexico dead zone covers thousands of square kilometers each summer.",
+       sources:"Ocean P reservoir: Filippelli (2008), Elements 4(2); Ruttenberg (2003), Treatise on Geochemistry."}
+    ],
+    edges: [
+      {from:"p_rocks", to:"p_soil",flux:"Slow (natural)",label:"Weathering",
+       desc:"Chemical and physical weathering gradually dissolves phosphate from apatite minerals in rock. Rain, plant root acids, and soil microbes accelerate this process — the slow natural input to the biological phosphorus cycle.",bidirectional:false,importance:3},
+      {from:"p_rocks", to:"p_soil",flux:"~500,000 t/day equiv.",label:"Mining (Apatite)",
+       desc:"Phosphorus is extracted from the lithosphere by mining apatite for use as fertilizer, in detergents, and in steel production — dramatically accelerating the natural weathering rate and depleting reserves that took millions of years to accumulate.",bidirectional:false,importance:4,human:true},
+      {from:"p_soil",  to:"p_plants",flux:"Variable",label:"Plant Uptake",
+       desc:"Plant roots absorb dissolved phosphate ions (H₂PO₄⁻ and HPO₄²⁻) from soil water, incorporating them into DNA, RNA, ATP, ADP, and phospholipids — the key components of all living cells.",bidirectional:false,importance:5},
+      {from:"p_plants",to:"p_anim",flux:"Variable",label:"Consumption",
+       desc:"Herbivores and omnivores obtain phosphorus by consuming plant tissue, using it for bones (hydroxyapatite), ATP, and nucleic acids.",bidirectional:false,importance:3},
+      {from:"p_plants",to:"p_decomp",flux:"Variable",label:"Plant Death",
+       desc:"Dead plant material enters the decomposer community, where phosphatase enzymes break down organic phosphorus and release inorganic phosphate back to the soil.",bidirectional:false,importance:3,labelT:0.3},
+      {from:"p_anim", to:"p_decomp",flux:"Variable",label:"Excretion & Death",
+       desc:"Animal waste (containing excess phosphorus excreted as human or animal waste) and carcasses are broken down by decomposers, returning phosphate to the soil. The Earth's reserves are rapidly depleting partly due to phosphorus excreted as human waste that is not recaptured.",bidirectional:false,importance:3,labelT:0.72},
+      {from:"p_decomp",to:"p_soil",flux:"Variable",label:"Mineralization",
+       desc:"Decomposers release inorganic phosphate from organic molecules through mineralization, regenerating the dissolved phosphate pool available for plant uptake.",bidirectional:false,importance:4},
+      {from:"p_soil", to:"p_water",flux:"Tripled by humans",label:"Agricultural Runoff",
+       desc:"Rain and irrigation carry dissolved phosphate and eroded soil particles into streams, rivers, and lakes. Excess fertilizers and livestock waste are the primary sources — the amount of phosphorus reaching freshwater and ocean systems has tripled due to human activity.",bidirectional:false,importance:5,human:true},
+      {from:"p_water",to:"p_ocean",flux:"~22 TgP/yr",label:"River Input",
+       desc:"Rivers deliver phosphorus from the continents to the ocean — with human-accelerated runoff having tripled the natural flux. This excess phosphorus drives coastal eutrophication and 'dead zones'.",bidirectional:false,importance:4}
+    ]
+  },
+
+  // ── OXYGEN CYCLE ──────────────────────────────
+  oxygen: {
+    name: "Oxygen Cycle",
+    tagline: "Produced by life, essential for life",
+    icon: "🫁",
+    color: "#22c55e",
+    glow: "rgba(34,197,94,.35)",
+    dimAccent: "rgba(34,197,94,.06)",
+    tags: ["Photosynthesis", "Respiration", "Ozone", "Decomposition"],
+    description: "Oxygen was not always abundant on Earth. About 2.7 billion years ago, the first photosynthesizers (cyanobacteria) began releasing O₂ into the atmosphere — triggering a mass extinction of countless anaerobic species. Today, photosynthesis and respiration keep O₂ cycling through the atmosphere and biosphere.",
+    keyProcesses: ["Photosynthesis", "Respiration", "Decomposition", "Ozone formation"],
+    nodes: [
+      {id:"o_atm",   label:"Atmosphere (O₂)", icon:"💨", x:50, y:28,
+       reservoir:"~21% of atmosphere",
+       tagline:"21% O₂ — a product of photosynthetic life",
+       description:"Molecular oxygen (O₂) makes up about 21% of Earth's atmosphere. For the first 1.3 billion years of life on Earth, oxygen existed largely in the lithosphere (rocks) — not the atmosphere. About 2.7 billion years ago, the first photosynthesizers began using CO₂ and releasing O₂, allowing oxygen-breathing animals to evolve and the protective ozone layer to form.",
+       stats:[{l:"O₂ in atmosphere",v:"~21% (by volume)"},{l:"First introduced by",v:"Cyanobacteria, ~2.7 Ga"},{l:"Pool size (Holland, 1978)",v:"~1,200,000 GtO"}],
+       fact:"Earth's oxygen levels are not fixed — they have shifted significantly over geological time. The current ~21% is a relatively recent development in Earth's 4.5-billion-year history, made possible entirely by photosynthetic life.",
+       impact:"Atmospheric O₂ has declined very slightly due to fossil fuel combustion — too small to affect breathing but scientifically measurable.",
+       sources:"Pool size estimate: Holland (1978), The Chemistry of the Atmosphere and Oceans, Wiley."},
+      {id:"o_ozone", label:"Ozone Layer", icon:"🛡️", x:82, y:15,
+       reservoir:"~3,500 Mt O₃",
+       tagline:"UV shield — formed once O₂ accumulated",
+       description:"Once sufficient O₂ accumulated in the atmosphere from photosynthesis, the stratospheric ozone layer (O₃) could form — absorbing harmful UV radiation from the Sun. This UV shield was essential for life to move from the ocean to the land. The ozone layer and oxygen-breathing life emerged together ~2.7 billion years ago.",
+       stats:[{l:"Forms from",v:"O₂ split by UV light"},{l:"Altitude",v:"15–35 km (stratosphere)"},{l:"Role",v:"Absorbs UV-B and UV-C"}],
+       fact:"The ozone hole over Antarctica (discovered 1985) was caused by CFCs — human-made molecules that persist in the atmosphere for decades. The Montreal Protocol (1987) banned CFCs and is considered one of the most successful international environmental agreements ever.",
+       impact:"CFC-driven ozone depletion peaked around 2000 and the ozone hole is projected to fully recover by ~2060–2080 — a rare example of successful global environmental action.",
+       sources:"Ozone mass estimate: WMO Scientific Assessment of Ozone Depletion (2022)."},
+      {id:"o_plants",label:"Plants & Algae", icon:"🌿", x:14, y:60,
+       reservoir:"~550 GtC (as biomass)",
+       tagline:"Primary O₂ producers via photosynthesis",
+       description:"Photosynthesis is a series of chemical reactions that use water and CO₂, storing energy in carbon molecules such as simple sugars, and releasing O₂: 6CO₂ + 6H₂O → C₆H₁₂O₆ + 6O₂. Anaerobic bacteria were the dominant life forms on Earth until the advent of photosynthesis. The release of O₂ by cyanobacteria performing photosynthesis caused a mass extinction of countless species of anaerobic bacteria.",
+       stats:[{l:"Key process",v:"Photosynthesis"},{l:"Producers",v:"Plants, algae, cyanobacteria"},{l:"Biomass C (IPCC AR6, 2021)",v:"~550 GtC"}],
+       fact:"The 'Oxygenating Extinction' — the mass die-off of anaerobic bacteria triggered by rising O₂ from cyanobacteria — is one of the largest extinction events in Earth's history. The very gas that sustains us was once a lethal pollutant to the life that dominated Earth.",
+       impact:"As humans reduce the quantity and health of trees and plants through deforestation, O₂ production and CO₂ absorption are both compromised.",
+       sources:"Biomass estimate: IPCC AR6 WGI (2021), Chapter 5; Global Carbon Project (2022)."},
+      {id:"o_animals",label:"Animals & Microbes", icon:"🐾", x:84, y:60,
+       reservoir:"Small biomass",
+       tagline:"O₂ consumers via aerobic respiration",
+       description:"Aerobic respiration — used by all animals, fungi, and most bacteria — consumes O₂ and releases CO₂: C₆H₁₂O₆ + 6O₂ → 6CO₂ + 6H₂O + ATP (energy). In Biosphere 2, the inflow of CO₂ involved respiration by humans and other organisms using the stock of O₂, supplied by photosynthesizers like plants and algae.",
+       stats:[{l:"Process",v:"Aerobic respiration"},{l:"Inputs",v:"O₂ + glucose"},{l:"Outputs",v:"CO₂ + H₂O + energy"}],
+       fact:"You breathe approximately 11,000 liters of air per day. Each breath you exhale contains oxygen molecules that were recently inside a plant leaf — the bond between photosynthesis and respiration is that tight.",
+       impact:"Human population growth and industrial combustion have significantly increased the global rate of O₂ consumption.",
+       sources:"Human respiratory air volume (~11,000 L/day): Guyton & Hall (2020), Textbook of Medical Physiology, 14th ed."},
+      {id:"o_decomp",label:"Decomposition", icon:"🍂", x:50, y:80,
+       reservoir:"N/A — process",
+       tagline:"Aerobic decomposition consumes O₂",
+       description:"Aerobic decomposers (bacteria and fungi) use O₂ to break down dead organic matter, releasing CO₂ and H₂O. In Biosphere 2, compost magnified O₂ consumption by microbes far beyond what was anticipated — demonstrating that decomposition is a hidden but powerful driver of the oxygen cycle.",
+       stats:[{l:"Process",v:"Aerobic decomposition"},{l:"Reactants",v:"O₂ + dead organic matter"},{l:"Products",v:"CO₂ + H₂O + heat"}],
+       fact:"In waterlogged soils where oxygen is absent, anaerobic decomposition produces methane (CH₄) instead of CO₂ — which is why wetlands are significant greenhouse gas sources.",
+       impact:"Warming soils accelerate aerobic decomposition, consuming more O₂ and releasing more CO₂ — a positive feedback loop that amplifies climate change."}
+    ],
+    edges: [
+      {from:"o_plants",to:"o_atm",flux:"~300 GtO₂/yr",label:"Photosynthesis",
+       desc:"Plants and algae produce O₂ as a byproduct of splitting water molecules: 6CO₂ + 6H₂O → C₆H₁₂O₆ + 6O₂. This is the source of virtually all atmospheric oxygen — a process that began with cyanobacteria ~2.7 billion years ago.",bidirectional:false,importance:5},
+      {from:"o_atm",  to:"o_animals",flux:"~160 GtO₂/yr",label:"Aerobic Respiration",
+       desc:"All aerobic organisms — animals, fungi, most bacteria — consume O₂ and release CO₂. Aerobic respiration: C₆H₁₂O₆ + 6O₂ → 6CO₂ + 6H₂O + ATP. This is the reverse of photosynthesis.",bidirectional:false,importance:5,labelT:0.25},
+      {from:"o_animals",to:"o_atm",flux:"~160 GtO₂/yr",label:"CO₂ Release",
+       desc:"CO₂ exhaled and released during respiration returns to the atmosphere, where it becomes available for photosynthesis — closing the short-term O₂–CO₂ balance between producers and consumers.",bidirectional:false,importance:4,labelT:0.25},
+      {from:"o_atm",  to:"o_decomp",flux:"~160 GtO₂/yr",label:"Decomposition",
+       desc:"Aerobic decomposition of dead organic matter uses O₂ in the same way as animal respiration. In Biosphere 2, compost microbes consumed O₂ far faster than expected, revealing decomposition as a major but often overlooked O₂ sink.",bidirectional:false,importance:4},
+      {from:"o_atm",  to:"o_ozone",flux:"Ongoing",label:"Ozone Formation",
+       desc:"UV radiation from the Sun splits O₂ molecules into individual O atoms, which then combine with O₂ to form ozone: O₂ + UV → 2O; O + O₂ → O₃. The ozone layer formed only after sufficient O₂ accumulated from photosynthesis ~2.7 billion years ago.",bidirectional:false,importance:3}
+    ]
+  }
+};
+
+// ═══════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════
+let currentCycle = null;
+let selectedNode = null;
+let humanImpact = false;
+let particles = [];
+let animFrame = null;
+let canvas, ctx, diagArea;
+let nodeEls = {};
+let edgeData = {};
+
+// ═══════════════════════════════════════════════
+// INIT HOME
+// ═══════════════════════════════════════════════
+function initHome(){
+  const grid = document.getElementById('cycles-grid');
+  grid.innerHTML = '';
+  Object.entries(CYCLES).forEach(([key,cyc])=>{
+    const card = document.createElement('div');
+    card.className='cycle-card';
+    card.style.setProperty('--card-color',cyc.color);
+    card.style.setProperty('--card-glow',cyc.glow);
+    card.innerHTML=`
+      <div class="card-icon">${cyc.icon}</div>
+      <div class="card-title">${cyc.name}</div>
+      <div class="card-desc">${cyc.description}</div>
+      <div class="card-tags">${cyc.tags.map(t=>`<span class="card-tag">${t}</span>`).join('')}</div>
+      <div class="card-footer">
+        <div class="card-meta">${cyc.nodes.length} reservoirs · ${cyc.edges.length} processes</div>
+        <div class="card-arrow">→</div>
+      </div>`;
+    card.onclick=()=>showCycle(key);
+    grid.appendChild(card);
+  });
+}
+
+// ═══════════════════════════════════════════════
+// SHOW / HIDE VIEWS
+// ═══════════════════════════════════════════════
+function showHome(){
+  document.getElementById('home-view').classList.add('view-active');
+  document.getElementById('cycle-view').classList.remove('view-active');
+  document.getElementById('back-btn').style.display='none';
+  document.getElementById('cycle-nav').style.display='none';
+  document.documentElement.style.setProperty('--accent','#14b8a6');
+  document.getElementById('accent-dot').style.background='#14b8a6';
+  document.getElementById('accent-dot').style.boxShadow='0 0 12px #14b8a6';
+  stopParticles();
+  currentCycle=null;
+  selectedNode=null;
+}
+
+function showCycle(key){
+  currentCycle = CYCLES[key];
+  humanImpact = false;
+  document.getElementById('impact-toggle').classList.remove('active');
+  document.getElementById('home-view').classList.remove('view-active');
+  document.getElementById('cycle-view').classList.add('view-active');
+  document.getElementById('back-btn').style.display='flex';
+  document.getElementById('cycle-nav').style.display='flex';
+  document.documentElement.style.setProperty('--accent', currentCycle.color);
+  document.getElementById('accent-dot').style.background=currentCycle.color;
+  document.getElementById('accent-dot').style.boxShadow=`0 0 12px ${currentCycle.color}`;
+  buildCycleNav(key);
+  collapsePanel();
+  selectedNode=null;
+  document.getElementById('welcome-panel').classList.remove('hidden');
+  requestAnimationFrame(()=>renderCycle());
+}
+
+function buildCycleNav(activeKey){
+  const nav = document.getElementById('cycle-nav');
+  nav.innerHTML='';
+  Object.entries(CYCLES).forEach(([k,c])=>{
+    const btn=document.createElement('button');
+    btn.className='cycle-nav-btn'+(k===activeKey?' active':'');
+    btn.textContent=c.name.split(' ')[0];
+    btn.onclick=()=>showCycle(k);
+    nav.appendChild(btn);
+  });
+}
+
+// ═══════════════════════════════════════════════
+// RENDER CYCLE DIAGRAM
+// ═══════════════════════════════════════════════
+function renderCycle(){
+  stopParticles();
+  const cyc = currentCycle;
+  diagArea = document.getElementById('diagram-area');
+  canvas = document.getElementById('particle-canvas');
+  ctx = canvas.getContext('2d');
+  const W = diagArea.clientWidth;
+  const H = diagArea.clientHeight;
+  canvas.width=W; canvas.height=H;
+
+  // Update title card
+  document.getElementById('ct-name').textContent=cyc.name;
+  document.getElementById('ct-tagline').textContent=cyc.tagline;
+  const procDiv=document.getElementById('ct-processes');
+  procDiv.innerHTML=cyc.keyProcesses.slice(0,3).map(p=>
+    `<div class="ct-process"><div class="ct-dot"></div>${p}</div>`).join('');
+
+  // Render SVG edges
+  const svg=document.getElementById('diagram-svg');
+  svg.innerHTML=`<defs>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="${cyc.color}" opacity=".8"/>
+    </marker>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>`;
+
+  edgeData={};
+  nodeEls={};
+
+  // Background click-catcher (behind all edges) to deselect
+  const bgRect=document.createElementNS('http://www.w3.org/2000/svg','rect');
+  bgRect.setAttribute('x','0');bgRect.setAttribute('y','0');
+  bgRect.setAttribute('width','100%');bgRect.setAttribute('height','100%');
+  bgRect.setAttribute('fill','transparent');
+  bgRect.onclick=()=>deselectNode();
+  svg.appendChild(bgRect);
+
+  // Build node position map
+  const positions={};
+  cyc.nodes.forEach(n=>{
+    positions[n.id]={x:n.x/100*W, y:n.y/100*H};
+  });
+
+  // Render edges
+  cyc.edges.forEach((edge,i)=>{
+    const node0=positions[edge.from];
+    const to0=positions[edge.to];
+    if(!node0||!to0)return;
+    const edgeId='edge_'+i;
+    const isSelfLoop=edge.from===edge.to;
+
+    let from,to,cpx,cpy;
+    if(isSelfLoop){
+      // Internal transformation (e.g. nitrification): a loop bulging to the
+      // side of the node, returning into it. Direction set by edge.loopX/loopY.
+      const lx=edge.loopX!==undefined?edge.loopX:120;
+      const ly=edge.loopY!==undefined?edge.loopY:0;
+      from={x:node0.x+(lx>=0?8:-8), y:node0.y-13};
+      to={x:node0.x+(lx>=0?8:-8), y:node0.y+13};
+      cpx=node0.x+lx;
+      cpy=node0.y+ly;
+    }else{
+      from=node0; to=to0;
+      // Compute control point (perpendicular offset for curved edges)
+      const mx=(from.x+to.x)/2;
+      const my=(from.y+to.y)/2;
+      const dx=to.x-from.x;
+      const dy=to.y-from.y;
+      const len=Math.sqrt(dx*dx+dy*dy);
+      const offset=Math.min(len*.3,80);
+      const perpX=-dy/len*offset;
+      const perpY=dx/len*offset;
+      // Alternate curve direction for visual clarity
+      const sign=(i%2===0)?1:-1;
+      cpx=mx+perpX*sign;
+      cpy=my+perpY*sign;
+    }
+
+    const pathD=`M ${from.x} ${from.y} Q ${cpx} ${cpy} ${to.x} ${to.y}`;
+
+    // Line
+    const path=document.createElementNS('http://www.w3.org/2000/svg','path');
+    path.setAttribute('d',pathD);
+    path.setAttribute('fill','none');
+    path.setAttribute('stroke',edge.human?'#ef4444':cyc.color);
+    path.setAttribute('stroke-width',edge.importance>3?'2':'1.5');
+    path.setAttribute('stroke-opacity',edge.human?(humanImpact?'1':'.25'):'.45');
+    path.setAttribute('stroke-dasharray',edge.human?'6,3':'none');
+    path.setAttribute('marker-end','url(#arrow)');
+    path.id=edgeId+'_path';
+    svg.appendChild(path);
+
+    // Store edge data for particles
+    edgeData[edgeId]={from,to,cpx,cpy,color:edge.human&&humanImpact?'#ef4444':cyc.color,importance:edge.importance,human:edge.human};
+
+    // Bidirectional arrow
+    if(edge.bidirectional){
+      const backPath=document.createElementNS('http://www.w3.org/2000/svg','path');
+      backPath.setAttribute('d',`M ${to.x} ${to.y} Q ${cpx} ${cpy} ${from.x} ${from.y}`);
+      backPath.setAttribute('fill','none');
+      backPath.setAttribute('stroke',cyc.color);
+      backPath.setAttribute('stroke-width','1.5');
+      backPath.setAttribute('stroke-opacity','.35');
+      backPath.setAttribute('stroke-dasharray','4,4');
+      backPath.setAttribute('marker-end','url(#arrow)');
+      svg.appendChild(backPath);
+    }
+
+    // Invisible wider hit area + label
+    const hitPath=document.createElementNS('http://www.w3.org/2000/svg','path');
+    hitPath.setAttribute('d',pathD);
+    hitPath.setAttribute('fill','none');
+    hitPath.setAttribute('stroke','rgba(255,255,255,0.001)');
+    hitPath.setAttribute('stroke-width','20');
+    hitPath.setAttribute('pointer-events','stroke');
+    hitPath.className.baseVal='edge-hit';
+    hitPath.style.cursor='pointer';
+    hitPath.onmouseenter=(e)=>showEdgeTooltip(edge,e);
+    hitPath.onmouseleave=hideEdgeTooltip;
+    hitPath.onclick=(e)=>showEdgeInfo(edge,e);
+    svg.appendChild(hitPath);
+
+    // Edge label (midpoint, or custom labelT if set)
+    const t=edge.labelT!==undefined?edge.labelT:0.5;
+    const lx=(1-t)*(1-t)*from.x+2*(1-t)*t*cpx+t*t*to.x;
+    const ly=(1-t)*(1-t)*from.y+2*(1-t)*t*cpy+t*t*to.y;
+    const label=document.createElementNS('http://www.w3.org/2000/svg','text');
+    label.setAttribute('x',lx);
+    label.setAttribute('y',ly-8);
+    label.setAttribute('text-anchor','middle');
+    label.setAttribute('fill',cyc.color);
+    label.setAttribute('font-size','9');
+    label.setAttribute('font-family','Inter,sans-serif');
+    label.setAttribute('font-weight','600');
+    label.setAttribute('opacity','.7');
+    label.setAttribute('pointer-events','none');
+    label.textContent=edge.label;
+    svg.appendChild(label);
+  });
+
+  // Render node elements
+  const layer=document.getElementById('nodes-layer');
+  layer.innerHTML='';
+  cyc.nodes.forEach(node=>{
+    const el=document.createElement('div');
+    el.className='node-div';
+    el.id='node_'+node.id;
+    el.style.left=(node.x/100*W)+'px';
+    el.style.top=(node.y/100*H)+'px';
+    el.style.setProperty('--accent',cyc.color);
+    el.innerHTML=`
+      <div class="node-circle">${node.icon}</div>
+      <div class="node-label">${node.label}<br><span class="node-reservoir">${node.reservoir}</span></div>`;
+    el.onclick=(e)=>{e.stopPropagation();selectNode(node,el)};
+    layer.appendChild(el);
+    nodeEls[node.id]=el;
+  });
+
+  // Click background to deselect
+  diagArea.onclick=(e)=>{
+    if(e.target===diagArea||e.target===canvas){
+      deselectNode();
+    }
+  };
+
+  startParticles();
+}
+
+// ═══════════════════════════════════════════════
+// PARTICLE SYSTEM
+// ═══════════════════════════════════════════════
+class Particle{
+  constructor(edgeId,edata){
+    this.edgeId=edgeId;
+    this.edata=edata;
+    this.t=0;
+    this.speed=0.003+Math.random()*.003;
+    this.size=2+Math.random()*2;
+    this.alpha=0;
+    this.done=false;
+  }
+  update(){
+    this.t+=this.speed;
+    if(this.t>1){this.done=true;return;}
+    this.alpha=this.t<.1?this.t/.1:this.t>.85?(1-this.t)/.15:1;
+  }
+  getPos(){
+    const {from,to,cpx,cpy}=this.edata;
+    const t=this.t;
+    const x=(1-t)*(1-t)*from.x+2*(1-t)*t*cpx+t*t*to.x;
+    const y=(1-t)*(1-t)*from.y+2*(1-t)*t*cpy+t*t*to.y;
+    return{x,y};
+  }
+  draw(ctx){
+    const {x,y}=this.getPos();
+    const col=this.edata.color;
+    ctx.save();
+    ctx.globalAlpha=this.alpha*.85;
+    // Glow
+    ctx.beginPath();
+    ctx.arc(x,y,this.size*2.5,0,Math.PI*2);
+    const g=ctx.createRadialGradient(x,y,0,x,y,this.size*2.5);
+    g.addColorStop(0,col+'60');
+    g.addColorStop(1,'transparent');
+    ctx.fillStyle=g;
+    ctx.fill();
+    // Core
+    ctx.beginPath();
+    ctx.arc(x,y,this.size,0,Math.PI*2);
+    ctx.fillStyle=col;
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
+function startParticles(){
+  particles=[];
+  let frameCount=0;
+  function loop(){
+    animFrame=requestAnimationFrame(loop);
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    frameCount++;
+    // Spawn particles
+    Object.entries(edgeData).forEach(([id,edata])=>{
+      if(edata.human&&!humanImpact)return;
+      const rate=edata.importance>3?1:0.5;
+      if(Math.random()<rate*0.04){
+        particles.push(new Particle(id,edata));
+      }
+    });
+    // Update + draw
+    particles=particles.filter(p=>{
+      p.update();
+      if(!p.done)p.draw(ctx);
+      return !p.done;
+    });
+    // Keep particle count reasonable
+    if(particles.length>120) particles=particles.slice(-100);
+  }
+  loop();
+}
+
+function stopParticles(){
+  if(animFrame){cancelAnimationFrame(animFrame);animFrame=null;}
+  particles=[];
+  if(ctx&&canvas)ctx.clearRect(0,0,canvas.width,canvas.height);
+}
+
+// ═══════════════════════════════════════════════
+// EDGE TOOLTIP
+// ═══════════════════════════════════════════════
+let tooltip=null;
+function showEdgeTooltip(edge,e){
+  hideEdgeTooltip();
+  tooltip=document.createElement('div');
+  tooltip.className='edge-popup';
+  tooltip.innerHTML=`<div class="ep-title">${edge.label}</div>
+    <div class="ep-flux">${edge.flux}</div>`;
+  tooltip.style.left=(e.clientX+12)+'px';
+  tooltip.style.top=(e.clientY-40)+'px';
+  document.body.appendChild(tooltip);
+}
+function hideEdgeTooltip(){
+  if(tooltip){tooltip.remove();tooltip=null;}
+}
+
+function showEdgeInfo(edge,e){
+  hideEdgeTooltip();
+  collapsePanel();
+  setTimeout(()=>{
+    document.getElementById('panel-badge').textContent='Process';
+    document.getElementById('panel-badge').style.color=currentCycle.color;
+    document.getElementById('panel-title').textContent=edge.label;
+    document.getElementById('panel-subtitle').textContent=`${edge.from} → ${edge.to}`;
+    const body=document.getElementById('panel-body');
+    body.innerHTML=`
+      <div class="panel-section">
+        <h4>Description</h4>
+        <p>${edge.desc}</p>
+      </div>
+      <div class="panel-section">
+        <h4>Flux Estimate</h4>
+        <div class="stat-row"><span class="stat-label">Annual flux</span><span class="stat-value">${edge.flux}</span></div>
+      </div>
+      ${edge.human?`<div class="panel-section"><h4>Human Influence</h4><div class="impact-tag">⚠ Anthropogenic process</div></div>`:''}`;
+    document.getElementById('info-panel').classList.remove('collapsed');
+    document.getElementById('welcome-panel').classList.add('hidden');
+  },50);
+}
+
+// ═══════════════════════════════════════════════
+// NODE SELECTION
+// ═══════════════════════════════════════════════
+function selectNode(node,el){
+  // Deselect previous
+  Object.values(nodeEls).forEach(e=>e.classList.remove('selected'));
+  el.classList.add('selected');
+  selectedNode=node;
+  document.getElementById('welcome-panel').classList.add('hidden');
+
+  const cyc=currentCycle;
+  document.getElementById('panel-badge').textContent='Reservoir';
+  document.getElementById('panel-badge').style.color=cyc.color;
+  document.getElementById('panel-title').textContent=node.label;
+  document.getElementById('panel-subtitle').textContent=node.tagline;
+
+  const statsHtml=node.stats.map(s=>`
+    <div class="stat-row">
+      <span class="stat-label">${s.l}</span>
+      <span class="stat-value">${s.v}</span>
+    </div>`).join('');
+
+  const body=document.getElementById('panel-body');
+  body.innerHTML=`
+    <div class="panel-section">
+      <h4>Overview</h4>
+      <p>${node.description}</p>
+    </div>
+    <div class="panel-section">
+      <h4>Key Statistics</h4>
+      ${statsHtml}
+    </div>
+    <div class="fun-fact">
+      <strong>Did you know?</strong>
+      ${node.fact}
+    </div>
+    ${node.impact?`
+    <div class="panel-section">
+      <h4>Human Impact</h4>
+      <div class="impact-tag">⚠ Anthropogenic</div>
+      <p style="margin-top:8px">${node.impact}</p>
+    </div>`:''}
+    <div class="fun-fact" style="border-color:color-mix(in srgb,var(--accent) 20%,transparent);margin-top:4px">
+      <strong style="color:var(--accent)">📖 SOS 110 · Ch. 10</strong>
+      Montgomery &amp; Sherman, <em>Environmental Science &amp; Sustainability</em> (2023, W. W. Norton). Biogeochemical cycles trace how matter flows through the lithosphere, biosphere, hydrosphere, and atmosphere — supporting Earth's life-support systems.
+    </div>
+    ${node.sources?`<div class="fun-fact" style="border-color:#1e293b;background:rgba(15,23,42,.4);margin-top:4px">
+      <strong style="color:#64748b;font-size:10px">📊 SUPPLEMENTARY DATA</strong><br>
+      <span style="color:#64748b;font-size:10px">${node.sources}</span>
+    </div>`:''}`;
+
+  document.getElementById('info-panel').classList.remove('collapsed');
+}
+
+function deselectNode(){
+  Object.values(nodeEls).forEach(e=>e.classList.remove('selected'));
+  selectedNode=null;
+  collapsePanel();
+  document.getElementById('welcome-panel').classList.remove('hidden');
+}
+
+function collapsePanel(){
+  document.getElementById('info-panel').classList.add('collapsed');
+}
+
+// ═══════════════════════════════════════════════
+// HUMAN IMPACT TOGGLE
+// ═══════════════════════════════════════════════
+function toggleImpact(){
+  humanImpact=!humanImpact;
+  document.getElementById('impact-toggle').classList.toggle('active',humanImpact);
+  // Re-render edges with impact styling
+  renderCycle();
+  if(selectedNode){
+    const el=nodeEls[selectedNode.id];
+    if(el)selectNode(selectedNode,el);
+  }
+}
+
+// ═══════════════════════════════════════════════
+// RESIZE HANDLER
+// ═══════════════════════════════════════════════
+let resizeTimer;
+window.addEventListener('resize',()=>{
+  clearTimeout(resizeTimer);
+  resizeTimer=setTimeout(()=>{
+    if(currentCycle)renderCycle();
+  },200);
+});
+
+// ═══════════════════════════════════════════════
+// BOOT
+// ═══════════════════════════════════════════════
+// Embed mode: ?embed=1 hides the app's own header (see body.embed CSS).
+if(new URLSearchParams(location.search).get('embed'))document.body.classList.add('embed');
+initHome();
+</script>
+</body>
+</html>
