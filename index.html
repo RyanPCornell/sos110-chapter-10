@@ -4665,7 +4665,7 @@ function Builder(el, ri, d0, opt){
       changed(); return; }
     pend=null; sel=null; render();
   });
-  svg.addEventListener('pointermove',function(e){ if(!drag) return; if(e.pointerType==='mouse' && e.buttons===0){ endDrag(e); return; } var q=toSvg(e);
+  svg.addEventListener('pointermove',function(e){ if(!drag) return; if(e.buttons===0){ endDrag(e); return; } var q=toSvg(e);
     if(!drag.moved && Math.hypot(q.x-drag.x0,q.y-drag.y0)<14) return; drag.moved=true;
     if(mode==='move'){ if(drag.lk) return; var F=d.n[drag.k]; F[0]=clamp(q.x,80,920); F[1]=clamp(q.y,60,630); G.innerHTML=diagSVG(R,full(),{sel:drag.k, lockL:lockL}); }
     else { var s=full().n[drag.k]; RUB.innerHTML='<path d="M'+r1(s[0])+' '+r1(s[1])+' L'+r1(q.x)+' '+r1(q.y)+'" stroke="'+(mode==='p'?'#2D6A4F':mode==='n'?'#A4373A':INK)+'" stroke-width="'+(mode==='f'?14:6)+'" stroke-dasharray="12 10" stroke-linecap="round" fill="none"/>'; } });
@@ -4678,13 +4678,18 @@ function Builder(el, ri, d0, opt){
       else { if(pend && pend!==k){ var a=pend; pend=null; addLink(a,k,mode); } else { pend= pend===k? null : k; render(); if(pend) toast('Now tap the piece this one <b>affects</b>.'); } }
     } }
   svg.addEventListener('pointerup',endDrag); svg.addEventListener('pointercancel',endDrag);
+  /* belt and braces: a drag can never outlive the button. Any release anywhere, a lost capture, or the window
+     losing focus ends it, so a piece cannot keep following the cursor. */
+  window.addEventListener('pointerup',function(e){ if(drag) endDrag(e); }, true);
+  svg.addEventListener('lostpointercapture',function(e){ if(drag) endDrag(e); });
+  window.addEventListener('blur',function(){ if(drag){ drag=null; RUB.innerHTML=''; changed(); } if(pd){ pd=null; render(); } });
   /* ── palette: tap to add, or drag onto the canvas ──
      The drag is tracked on the window, and the palette is NOT redrawn until the drop: redrawing it mid-drag
      destroyed the element holding the pointer capture, the release was never heard, and the piece then
      followed the mouse with no button held. */
   var pd=null;
   function palMove(e){ if(!pd) return;
-    if(e.pointerType==='mouse' && e.buttons===0){ palUp(e); return; }
+    if(e.buttons===0){ palUp(e); return; }
     if(!pd.on && Math.hypot(e.clientX-pd.x,e.clientY-pd.y)<10) return;
     var r=svg.getBoundingClientRect(), inside=e.clientX>r.left&&e.clientX<r.right&&e.clientY>r.top&&e.clientY<r.bottom;
     if(!pd.on && inside){ pd.on=true; if(R.locked && R.pieces[pd.k].k==='pol'){ Object.keys(d.n).forEach(function(q){ if(R.pieces[q].k==='pol') delete d.n[q]; }); d.l=d.l.filter(function(l){ return d.n[l[0]]||(R.locked&&R.locked.n[l[0]]); }); } }
