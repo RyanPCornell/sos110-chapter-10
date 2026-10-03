@@ -3667,13 +3667,13 @@ var ROUNDS=[
     if(fin<8000) return {ok:0, code:'flat', head:'Only '+Math.round(fin).toLocaleString()+' users', why:'Nothing made growth feed on itself. Users have to cause more sign-ups (word of mouth) for a reinforcing loop.'};
     return {ok:0, code:'cliff', head:'Growth, then a hard stop', why:'Your growth ran at full speed until the last student signed up. Real adoption slows as the pool shrinks: sign-ups should depend on the students still without the app.'}; }
 },
-{ id:'shop', ans:'Deliveries <b class=pipe>⇒</b> Hoodies in stock <b class=pipe>⇒</b> Sales: the stock, its inflow and its outflow. Then Hoodies in stock <b class=neg>−</b> Deliveries: when the shelves run low, order more; when they are full, order less. One minus sign: a <b>balancing</b> loop. (Routing it through Orders to the factory works too.)', n:'The Hoodie Shop', scen:'Business', mult:1.5, dur:180, mode:'mul', T:30, al:.35,
-  story:'The campus store sells about 10 hoodies a week and keeps 100 in stock. Football season is coming: from week 8 to week 18, game-day demand will more than double. Every hoodie sold earns $12; every hoodie sitting in the stockroom costs storage, and every customer turned away is a lost sale.',
-  task:'Build a <b>stock-and-flow model</b> of the shop’s hoodies with a <b>balancing ordering rule</b>, so the shop never sells out and the stockroom never overflows.',
+{ id:'shop', ans:'Deliveries <b class=pipe>⇒</b> T-shirts in stock <b class=pipe>⇒</b> Sales: the stock, its inflow and its outflow. Then T-shirts in stock <b class=neg>−</b> Deliveries: when the shelves run low, order more; when they are full, order less. One minus sign: a <b>balancing</b> loop. (Routing it through Orders to the factory works too.)', n:'The T-Shirt Shop', scen:'Business', mult:1.5, dur:180, mode:'mul', T:30, al:.35,
+  story:'The campus store sells about 10 ASU T-shirts a week and keeps 100 in stock. Football season is coming: from week 8 to week 18, game-day demand will more than double. Every shirt sold earns $12; every shirt sitting in the stockroom costs storage, and every customer turned away is a lost sale.',
+  task:'Build a <b>stock-and-flow model</b> of the shop’s T-shirts with a <b>balancing ordering rule</b>, so the shop never sells out and the stockroom never overflows.',
   short:'never sold out, never overflowing',
   concepts:['stock','flow','neg'],
   pieces:{
-    inv:{n:'Hoodies in stock', k:'stock', role:'core', ic:'box', always:1, ref:100, init:100, max:320},
+    inv:{n:'T-shirts in stock', k:'stock', role:'core', ic:'box', always:1, ref:100, init:100, max:320},
     del:{n:'Deliveries', k:'flow', role:'core', ic:'truck', k0:10},
     sales:{n:'Sales', k:'flow', role:'core', ic:'tag', k0:10, exo:rush, exoVia:'dem'},
     ord:{n:'Orders to the factory', k:'var', role:'extra', ic:'clip', al:.35},
@@ -3691,8 +3691,8 @@ var ROUNDS=[
   goal:{sfd:'inv', loops:[{t:'B', must:['inv','del']}]},
   sol:{n:{del:[180,330],inv:[500,330],sales:[820,330]}, l:[['del','inv','f'],['inv','sales','f'],['inv','del','n']]},
   check:function(r){ var I=r.v.inv, mn=Math.min.apply(null,I), mx=Math.max.apply(null,I), pf=shopProfit(r), out=I.filter(function(x){ return x<=6; }).length;
-    if(mx>=180) return {ok:0, code:'over', head:'The stockroom overflowed: '+Math.round(mx)+' hoodies', why:'Deliveries kept coming whether or not the hoodies sold. Storage costs ate the profit ($'+pf.toLocaleString()+').'};
-    if(out>0 || mn<15) return {ok:0, code:'sold', head: out? 'Sold out for '+out+' weeks of the rush' : 'Down to '+Math.round(mn)+' hoodies: nearly sold out', why:'The stock fell and nothing told the shop to order more. Customers walked away; profit was $'+pf.toLocaleString()+'.'};
+    if(mx>=180) return {ok:0, code:'over', head:'The stockroom overflowed: '+Math.round(mx)+' T-shirts', why:'Deliveries kept coming whether or not the T-shirts sold. Storage costs ate the profit ($'+pf.toLocaleString()+').'};
+    if(out>0 || mn<15) return {ok:0, code:'sold', head: out? 'Sold out for '+out+' weeks of the rush' : 'Down to '+Math.round(mn)+' T-shirts: nearly sold out', why:'The stock fell and nothing told the shop to order more. Customers walked away; profit was $'+pf.toLocaleString()+'.'};
     if(mn>=8) return {ok:1, code:'stocked', head:'In stock all season: $'+pf.toLocaleString()+' profit',
       why:'As the shelves emptied, the shop ordered more, and as they filled it ordered less: a balancing loop between the stock and its inflow.'};
     return {ok:0, code:'thin', head:'Nearly sold out', why:'The stock fell almost to zero. A stronger ordering rule would have kept the shelves fuller.'}; }
@@ -3763,7 +3763,7 @@ var ROUNDS=[
 }
 ];
 
-/* weekly profit: $12 a hoodie sold, storage at $0.40 a hoodie a week, $50 rent */
+/* weekly profit: $12 a shirt sold, storage at $0.40 a shirt a week, $50 rent */
 function shopProfit(r){ var S=r.v.sales||[], I=r.v.inv, p=0; for(var t=0;t<r.v.inv.length-1;t++){ p+=12*(S[t+1]!=null? Math.min(S[t+1], I[t]+(r.v.del? r.v.del[t+1]||0 : 0)) : 0)-.4*I[t]-50; } return Math.round(p/10)*10; }
 var RID={}; ROUNDS.forEach(function(R){ RID[R.id]=R; });
 var CONCEPTS={
@@ -4264,8 +4264,12 @@ cap:function(s){ return Math.round(s.users).toLocaleString()+' users after '+s.w
 };
 
 
-/* ═══════ THE HOODIE SHOP: a campus store in cutaway; shelves, a queue, a loading door ═══════ */
-function hoodie(x,y,c){ return '<g transform="translate('+r1(x)+','+r1(y)+') scale(1.15)"><path d="M-9 0 V-11 C-9 -14 -6 -15 -3 -15 C-2 -18 2 -18 3 -15 C6 -15 9 -14 9 -11 V0 Z" fill="'+c+'" stroke="'+INK+'" stroke-width=".9"/><path d="M-3 -15 C-2 -11 2 -11 3 -15 M-9 -5 H9" fill="none" stroke="'+INK+'" stroke-width=".7" opacity=".7"/></g>'; }
+/* ═══════ THE T-SHIRT SHOP: a campus store in cutaway; shelves, a queue, a loading door ═══════ */
+/* a t-shirt, front view; every other maroon or gold shirt carries "ASU" across the chest */
+function tshirt(x,y,c,asu){ var txt= c==='#8c3a3f'? '#e8b84a' : c==='#d9a441'? '#8c3a3f' : '#fbf5e6';
+  return '<g transform="translate('+r1(x)+','+r1(y)+') scale(1.12)"><path d="M-6 -17 C-3 -14 3 -14 6 -17 L13 -14 L17 -8 L12 -5 L10 -7 V0 H-10 V-7 L-12 -5 L-17 -8 L-13 -14 Z" fill="'+c+'" stroke="'+INK+'" stroke-width=".9" stroke-linejoin="round"/>'+
+    '<path d="M-6 -17 C-3 -14 3 -14 6 -17" fill="none" stroke="'+INK+'" stroke-width=".8"/>'+
+    (asu? '<text x="0" y="-5.2" text-anchor="middle" style="font:900 7.2px Inter,sans-serif;letter-spacing:.02em" fill="'+txt+'">ASU</text>' : '')+'</g>'; }
 function shopper(x,y,c,face,walk,tm,sc){ var b=walk? Math.sin(tm*9)*1.5 : 0;
   return '<g transform="translate('+r1(x)+','+r1(y+b)+') scale('+(sc||1.4)+')"><path d="M-7 -6 V-17 C-7 -22 7 -22 7 -17 V-6 Z" fill="'+c+'" stroke="'+INK+'" stroke-width=".9"/><circle cx="0" cy="-26" r="5.5" fill="#efd3b4" stroke="'+INK+'" stroke-width=".9"/><path d="M-5.5 -27 C-5 -33 5 -33 5.5 -27 C3 -30 -3 -30 -5.5 -27 Z" fill="'+['#5a4330','#2f2a24','#a8723a','#7a3a2a'][Math.abs(Math.round(x))%4]+'"/>'+
     (face<0? '<path d="M-2.2 -22.8 q2.2 -1.4 4.4 0" fill="none" stroke="'+INK+'" stroke-width=".8"/>' : '<path d="M-2.2 -23.6 q2.2 1.4 4.4 0" fill="none" stroke="'+INK+'" stroke-width=".8"/>')+
@@ -4289,12 +4293,12 @@ base:function(u){
   ink+='<rect x="452" y="150" width="62" height="44" stroke-width="1.3"/><path d="M483 150 L483 142" stroke-width="1"/>';
   ink+='<path d="M540 290 V112 H616" stroke-width="2.4"/><path d="M546 290 V118 H616" stroke-width="1"/>';
   o+=K(u,ink);
-  o+=T(483,166,'HOODIES','ll-sc',' text-anchor="middle"')+T(483,186,'$12','ll-val',' text-anchor="middle" style="font-size:16px"');
+  o+=T(483,166,'T-SHIRTS','ll-sc',' text-anchor="middle"')+T(483,186,'$12','ll-val',' text-anchor="middle" style="font-size:16px"');
   o+=T(141,334,'stockroom','ll-lab',' text-anchor="middle"')+T(356,334,'register','ll-lab',' text-anchor="middle"')+T(578,334,'loading door','ll-lab',' text-anchor="middle"');
   return o; },
 over:function(s,tm,u){
-  var o='', inv=s.inv, slots=Math.min(24, Math.round(inv/6.25)), cols=['#8c3a3f','#d9a441','#8c3a3f','#4f6f94'];
-  for(var i=0;i<slots;i++){ var sh=2-Math.floor(i/8), c=i%8; o+=hoodie(55+c*24.4, [128,192,256][sh]-1, cols[(i+sh)%4]); }
+  var o='', inv=s.inv, slots=Math.min(18, Math.round(inv/8.33)), cols=['#8c3a3f','#d9a441','#4f6f94','#8c3a3f','#d9a441','#e8e2d4'];
+  for(var i=0;i<slots;i++){ var sh=2-Math.floor(i/6), c=i%6, col=cols[(c+sh)%6]; o+=tshirt(62+c*32.6, [128,192,256][sh]-1, col, col==='#8c3a3f'||col==='#d9a441'); }
   if(inv>150){ var nb=Math.min(16, Math.ceil((inv-150)/10)), bx='';
     for(var b=0;b<nb;b++){ var col=b%8, row=Math.floor(b/8), x=44+col*24.5, y=322-row*18; bx+='<rect x="'+x+'" y="'+(y-17)+'" width="23" height="17" fill="#d9b98a" stroke="'+INK+'" stroke-width=".9"/><path d="M'+x+' '+(y-11)+' H'+(x+23)+'" stroke="'+INK+'" stroke-width=".6"/>'; }
     o+=bx+T(141,88,'overflowing: storage costs','ll-alert',' text-anchor="middle"'); }
@@ -4320,7 +4324,7 @@ over:function(s,tm,u){
   o+=readout(38,44,'WEEK',s.wk)+readout(96,44,'IN STOCK',Math.round(inv),inv<15?'#A4373A':inv>150?'#A4373A':null);
   o+=readout(604,44,'PROFIT SO FAR',(s.profit<0?'−$':'$')+Math.abs(Math.round(s.profit/10)*10).toLocaleString(),s.profit<0?'#A4373A':'#4f7a3a','end');
   return o; },
-cap:function(s){ return 'Week '+s.wk+': '+Math.round(s.inv)+' hoodies in stock, '+(s.profit<0?'−$':'$')+Math.abs(Math.round(s.profit)).toLocaleString()+' profit'; }
+cap:function(s){ return 'Week '+s.wk+': '+Math.round(s.inv)+' T-shirts in stock, '+(s.profit<0?'−$':'$')+Math.abs(Math.round(s.profit)).toLocaleString()+' profit'; }
 };
 
 /* ═══════ 5. THE GREEN LAKE: phosphorus, algae, oxygen and the mud ═══════ */
@@ -4570,7 +4574,7 @@ var BOT={
  ice:{y:[0,110], u:'%', x:['1980','2010','2040'], f:function(r,t){ return clamp(100+20*r.v.ice[t],0,106); }, obs:1, lbl:'Sea ice (% of 1980)'},
  lake:{y:[0,125], u:'%', x:['2000','2020','2040'], f:function(r,t){ return r.v.lake[t]; }, line:[8,'dead pool'], shade:[6,21,'drought'], lbl:'Lake (% full)'},
  app:{y:[0,60000], u:'', x:['week 0','30','60'], f:function(r,t){ return Math.min(r.v.users[t],60000); }, obs:1, line:[50000,'every student'], lbl:'Users'},
- shop:{y:[0,220], u:'', x:['week 0','15','30'], f:function(r,t){ return Math.min(r.v.inv[t],220); }, band:[15,180,'in stock, not overflowing'], shade:[8,18,'game-day rush'], lbl:'Hoodies in stock'},
+ shop:{y:[0,220], u:'', x:['week 0','15','30'], f:function(r,t){ return Math.min(r.v.inv[t],220); }, band:[15,180,'in stock, not overflowing'], shade:[8,18,'game-day rush'], lbl:'T-shirts in stock'},
  green:{y:[0,80], u:'', x:['year 0','15','30'], f:function(r,t){ return Math.min(r.v.P[t],80); }, tip:1, lbl:'Phosphorus in the water'},
  city:{y:[60,180], u:'', x:['2025','2040','2055'], f:function(r,t){ return 100+20*r.v.co2[t]; }, base:1, lbl:'CO₂ emissions (2025 = 100)'}
 };
@@ -4929,7 +4933,7 @@ function hostBar(){
   if(p==='lobby') x+='<label>Build time <select data-tscale><option value=".75">shorter</option><option value="1" selected>normal</option><option value="1.5">longer</option></select></label>'+b('brief','Start round 1 ▸');
   if(p==='brief') x+='<label>Timer <select data-dur>'+[60,90,120,150,180,210,240,300].map(function(s){ var d=Math.round(ROUNDS[rd()].dur*(+state.ts||1)/30)*30; return '<option'+(s===d?' selected':'')+' value="'+s+'">'+Math.floor(s/60)+':'+('0'+s%60).slice(-2)+'</option>'; }).join('')+'</select></label>'+b('build','Start building ▸');
   if(p==='build') x+=b('run','End building now ▸');
-  if(p==='run') x+=b('replay','↻ Replay','ghost')+b('another','Pick new systems','ghost')+b('model','Possible answer','ghost')+b('score','Scores ▸');
+  if(p==='run') x+=b('replay','↻ Replay','ghost')+b('worked','Show one that worked','ghost')+b('another','Pick new systems','ghost')+b('model','Possible answer','ghost')+b('score','Scores ▸');
   if(p==='score') x+= last? b('end','Final results ▸') : b('next','Round '+(rd()+2)+' ▸')+b('end','End game','ghost');
   return x+b('reset','Reset','ghost');
 }
@@ -4941,6 +4945,7 @@ function hostClick(h){
   else if(h==='run') hRun();
   else if(h==='replay') playItem(seqI);
   else if(h==='another') pickFeatured();
+  else if(h==='worked') showWorked();
   else if(h==='model') playItem(seq.length-1);
   else if(h==='score') hScore();
   else if(h==='next') setPhase({ph:'brief', rd:rd()+1, ft:null});
@@ -4955,6 +4960,14 @@ function pickFeatured(){
   function pick(a){ return a.length? a[Math.floor(Math.random()*a.length)] : null; }
   var A=pick(miss), B=pick(hit), first=Math.random()<.5;
   setPhase({ft:{a:first? A : B, b:first? B : A, t:Date.now()}});
+}
+/* play a random opted-in system that matched, other than the one on screen; then the possible answer follows */
+function showWorked(){
+  var cur=seq[seqI]||{}, hit=[];
+  roundRows(rd()).forEach(function(x){ var q=players()[x.k]; if(!q||q.ok===0||!x.d||!x.d.l.length||x.k===cur.pk) return;
+    if(evaluate(rd(), x.d, x.k, x.pr||0, (q.h||{})[rd()]).verdict==='M') hit.push({pk:x.k}); });
+  if(!hit.length){ var t=$('[data-tally]'); if(t) t.insertAdjacentHTML('afterbegin','<div class="ll-next">No other opted-in system matched this round.</div>'); return; }
+  seq=[hit[Math.floor(Math.random()*hit.length)], {model:1}]; playItem(0);
 }
 function hScore(){ var st=standings(), lb={}; st.forEach(function(x,i){ lb[x.k]=x.s+'|'+(i+1)+'|'+st.length; }); setPhase({ph:'score', lb:lb}); }
 
