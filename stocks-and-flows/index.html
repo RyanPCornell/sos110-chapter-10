@@ -155,6 +155,89 @@
   body.embed nav.bar,
   body.embed header.hero{display:none}
   body.embed section:first-of-type{padding-top:34px}
+
+  /* ── Focus mode (?focus=lab) ───────────────────────────────────────────
+     For the Chapter 10 slide: one tool at a time behind a tab rail, laid out
+     as three side-by-side columns (picture · controls · chart) that fill the
+     frame, so the slide never scrolls. Intro text, chart notes and the
+     reference list move into pop-ups. Standalone (no ?focus) is untouched. */
+  html:has(body.focus-lab), body.focus-lab{height:100%; overflow:hidden;}
+  body.focus-lab{display:flex; flex-direction:column; background:var(--paper);}
+  body.focus-lab nav.bar, body.focus-lab header.hero, body.focus-lab section.refs, body.focus-lab footer{display:none !important;}
+  body.focus-lab section{display:none; padding:0 !important; flex:1 1 auto; min-height:0; background:var(--paper);}
+  body.focus-lab section.fl-on{display:block;}
+  body.focus-lab section .wrap{max-width:none; height:100%; display:grid; align-items:stretch;
+    gap:clamp(8px,1.5vh,14px); padding:clamp(8px,1.6vh,14px) clamp(10px,1.4vw,16px) clamp(10px,1.8vh,16px);}
+  body.focus-lab #tool1 .wrap{grid-template-columns:minmax(170px,.7fr) minmax(250px,1fr) minmax(280px,1.4fr);}
+  body.focus-lab #tool2 .wrap{grid-template-columns:minmax(250px,1fr) minmax(270px,1.1fr) minmax(230px,.9fr);}
+  body.focus-lab #tool3 .wrap{grid-template-columns:minmax(230px,.95fr) minmax(250px,1fr) minmax(280px,1.3fr);}
+  body.focus-lab .sec-num, body.focus-lab section h2, body.focus-lab .sub, body.focus-lab .chartwrap .hint{display:none;}
+  body.focus-lab .sim, body.focus-lab .cc, body.focus-lab .fbtool{display:contents;}
+  body.focus-lab .panel{min-height:0; height:100%; overflow:hidden; margin:0;}
+  body.focus-lab .stage, body.focus-lab .fbloopwrap{justify-content:center; padding:clamp(8px,1.8vh,18px);}
+  body.focus-lab svg.tub{width:auto; max-width:100%; max-height:calc(100% - 120px);}
+  body.focus-lab .ccdiagram{display:flex; flex-direction:column; justify-content:center; padding:clamp(8px,1.4vh,14px);}
+  body.focus-lab svg.cyc{min-height:0; max-height:calc(100% - 34px);}
+  body.focus-lab svg.loop{min-height:0; max-height:calc(100% - 160px);}
+  body.focus-lab .controls{display:flex; flex-direction:column; justify-content:safe center;
+    padding:clamp(10px,1.8vh,18px) clamp(12px,1.4vw,18px);}
+  body.focus-lab .tabs, body.focus-lab .presets{gap:6px; margin-bottom:clamp(6px,1.4vh,14px);}
+  body.focus-lab .stab, body.focus-lab .preset{padding:clamp(4px,.8vh,7px) 10px; font-size:clamp(.68rem,1.75vh,.8rem);}
+  body.focus-lab .scen-desc{font-size:clamp(.7rem,1.85vh,.86rem); line-height:1.4; padding:clamp(6px,1.2vh,10px) 11px;
+    margin-bottom:clamp(8px,1.6vh,16px);}
+  body.focus-lab .scen-desc .cite{margin-top:3px; font-size:clamp(.62rem,1.5vh,.74rem);}
+  body.focus-lab .sliderrow{margin-bottom:clamp(6px,1.5vh,14px);}
+  body.focus-lab .sliderrow .lab{margin-bottom:3px;}
+  body.focus-lab .sliderrow .lab .name{font-size:clamp(.72rem,1.85vh,.86rem); white-space:nowrap;}
+  body.focus-lab .sliderrow .lab .val{white-space:nowrap; font-size:clamp(.84rem,2.1vh,1rem);}
+  body.focus-lab #tool2 .sliderrow{margin-bottom:clamp(4px,1.1vh,11px);}
+  body.focus-lab #tool2 .ccstat .y{font-size:clamp(.9rem,2.2vh,1.05rem);}
+  body.focus-lab #tool2 .ccstat .ppm{font-size:clamp(1.15rem,3vh,1.5rem);}
+  body.focus-lab #tool2 .ccstat span{font-size:clamp(.8rem,2vh,.95rem);}
+  body.focus-lab .net{padding:clamp(6px,1.2vh,11px); margin:2px 0 clamp(8px,1.6vh,14px); font-size:clamp(.72rem,1.85vh,.9rem);}
+  body.focus-lab .btn{padding:clamp(7px,1.4vh,11px); font-size:clamp(.78rem,1.9vh,.9rem);}
+  body.focus-lab .ccstat{padding:clamp(6px,1.2vh,10px) 12px; margin-bottom:clamp(8px,1.6vh,14px);}
+  body.focus-lab .chartwrap{display:flex; flex-direction:column; padding:clamp(10px,1.8vh,16px) clamp(12px,1.4vw,18px);}
+  body.focus-lab .chartwrap h3{font-size:clamp(.86rem,2.2vh,1.05rem); margin:0 0 6px;}
+  body.focus-lab .chartbox{flex:1 1 auto; height:auto; min-height:0;}
+  body.focus-lab .readout .big, body.focus-lab .fbreadout .big{font-size:clamp(1.5rem,5vh,2.3rem);}
+  body.focus-lab .readout{margin-top:4px;}
+  body.focus-lab .legendkey{margin-top:6px; font-size:.72rem; gap:10px;}
+
+  /* the tab rail */
+  .fl-bar{flex:none; display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+    padding:clamp(8px,1.5vh,12px) clamp(10px,1.4vw,16px) 0;}
+  .fl-tabs{display:flex; gap:6px; flex-wrap:wrap; margin-right:auto;}
+  .fl-tab{font-family:inherit; font-weight:600; font-size:clamp(.74rem,1.95vh,.88rem); cursor:pointer;
+    border:1px solid var(--line); background:#fff; color:var(--forest-2); padding:clamp(6px,1.2vh,9px) 15px;
+    border-radius:999px; transition:.15s;}
+  .fl-tab:hover{border-color:var(--teal);}
+  .fl-tab.on{background:var(--forest); color:#fff; border-color:var(--forest);}
+  .fl-tab em{font-style:normal; font-weight:500; opacity:.72; margin-left:4px;}
+  @media (max-width:1180px){ .fl-tab em{display:none;} }
+  .fl-btn{display:inline-flex; align-items:center; gap:6px; font-family:inherit; font-weight:600;
+    font-size:clamp(.72rem,1.85vh,.84rem); cursor:pointer; border:1px solid var(--line); background:var(--sand);
+    color:var(--forest); padding:clamp(6px,1.2vh,8px) 13px; border-radius:999px; transition:.15s;}
+  .fl-btn:hover{background:var(--forest); color:#fff; border-color:var(--forest);}
+  .fl-btn svg{width:15px; height:15px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round;}
+
+  /* pop-ups */
+  .fl-pop{position:fixed; inset:0; z-index:100; display:flex; align-items:center; justify-content:center;
+    background:rgba(12,32,28,.46); padding:4vh 4vw;}
+  .fl-pop[hidden]{display:none;}
+  .fl-card{background:#fff; border-radius:16px; width:100%; max-width:660px; max-height:100%; overflow:auto;
+    padding:clamp(16px,3vh,26px) clamp(18px,2.4vw,28px); box-shadow:0 24px 60px rgba(12,32,28,.32);}
+  .fl-card.wide{max-width:860px;}
+  .fl-k{font-size:.74rem; letter-spacing:.16em; text-transform:uppercase; color:var(--teal); font-weight:700; margin:0 0 6px;}
+  .fl-t{font-family:'Fraunces',Georgia,serif; font-weight:600; font-size:clamp(1.2rem,3.4vh,1.6rem); color:var(--forest); margin:0 0 10px; line-height:1.2;}
+  .fl-p{font-size:clamp(.86rem,2.2vh,1rem); color:#3a463f; line-height:1.55; margin:0 0 12px;}
+  .fl-p.note{font-size:clamp(.8rem,2vh,.9rem); background:var(--sand); border-left:3px solid var(--teal);
+    border-radius:8px; padding:10px 13px;}
+  .fl-card ol{margin:0; padding-left:20px;}
+  .fl-card li{font-size:.84rem; color:#3a463f; margin-bottom:9px; line-height:1.45;}
+  .fl-card li a{word-break:break-word;}
+  .fl-x{margin-top:6px; font-family:inherit; font-weight:600; font-size:.9rem; cursor:pointer; border:none;
+    border-radius:10px; padding:9px 18px; background:var(--forest); color:#fff;}
 </style>
 </head>
 <body>
@@ -815,6 +898,58 @@ const obs=new IntersectionObserver(es=>{es.forEach(e=>{if(e.isIntersecting){
 <script>
 /* Embed mode: ?embed=1 hides the app's own nav/hero (see body.embed CSS). */
 if(new URLSearchParams(location.search).get('embed'))document.body.classList.add('embed');
+
+/* Focus mode (?focus=lab): tabs + pop-ups so the tools fit a slide without scrolling. */
+(function(){
+  if(new URLSearchParams(location.search).get('focus')!=='lab') return;
+  var B=document.body; B.classList.add('focus-mode','focus-lab');
+  var secs=['tool1','tool2','tool3'].map(function(id){ return document.getElementById(id); });
+  var names=[['① Faucet &amp; Drain','one stock'],['② Carbon Cycle','many stocks'],['③ Feedback Loops','flows that depend on the stock']];
+  var ICON_I='<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9.2"/><path d="M12 11.3v5.4"/><circle cx="12" cy="7.9" r="1.1" fill="currentColor" stroke="none"/></svg>';
+  var ICON_S='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4h9l4 4v12H6z"/><path d="M9 12h7M9 16h7"/></svg>';
+  var bar=document.createElement('div'); bar.className='fl-bar';
+  bar.innerHTML='<div class="fl-tabs" role="tablist">'+names.map(function(n,i){
+      return '<button class="fl-tab" role="tab" data-fl="'+i+'">'+n[0]+'<em>'+n[1]+'</em></button>'; }).join('')+'</div>'
+    +'<button class="fl-btn" data-fl-about>'+ICON_I+'How to use</button>'
+    +'<button class="fl-btn" data-fl-src>'+ICON_S+'Sources</button>';
+  B.insertBefore(bar, B.firstChild);
+  var pop=document.createElement('div'); pop.className='fl-pop'; pop.hidden=true;
+  B.appendChild(pop);
+  var cur=0;
+  function show(i){
+    cur=i;
+    secs.forEach(function(s,k){ s.classList.toggle('fl-on', k===i); });
+    bar.querySelectorAll('[data-fl]').forEach(function(b){
+      var on=+b.getAttribute('data-fl')===i; b.classList.toggle('on',on); b.setAttribute('aria-selected',on); });
+    requestAnimationFrame(function(){ window.dispatchEvent(new Event('resize')); });
+  }
+  function open(html, wide){
+    pop.innerHTML='<div class="fl-card'+(wide?' wide':'')+'" role="dialog">'+html
+      +'<button class="fl-x" data-fl-close>Got it</button></div>';
+    pop.hidden=false;
+  }
+  function about(){
+    var s=secs[cur], k=s.querySelector('.sec-num'), t=s.querySelector('h2'), sub=s.querySelector('.sub'),
+        hint=s.querySelector('.chartwrap .hint');
+    open('<p class="fl-k">'+(k?k.textContent:'')+'</p><h3 class="fl-t">'+(t?t.innerHTML:'')+'</h3>'
+      +'<p class="fl-p">'+(sub?sub.innerHTML:'')+'</p>'
+      +(hint?'<p class="fl-p note"><b>Reading the chart.</b> '+hint.innerHTML+'</p>':''));
+  }
+  function sources(){
+    var r=document.querySelector('section.refs ol');
+    open('<p class="fl-k">References</p><h3 class="fl-t">Data sources &amp; further reading</h3>'
+      +'<p class="fl-p">Every quantitative value in these tools comes from the sources below.</p>'+(r?r.outerHTML:''), true);
+  }
+  bar.addEventListener('click',function(e){
+    var t=e.target.closest('[data-fl]'); if(t){ show(+t.getAttribute('data-fl')); return; }
+    if(e.target.closest('[data-fl-about]')) about();
+    else if(e.target.closest('[data-fl-src]')) sources();
+  });
+  pop.addEventListener('click',function(e){ if(e.target===pop || e.target.closest('[data-fl-close]')) pop.hidden=true; });
+  document.addEventListener('keydown',function(e){ if(e.key==='Escape') pop.hidden=true; });
+  var h=(location.hash||'').match(/tool([123])/);
+  show(h ? (+h[1]-1) : 0);
+})();
 </script>
 </body>
 </html>
