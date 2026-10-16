@@ -3975,7 +3975,16 @@ var ADJ=['Balancing','Reinforcing','Curious','Steady','Delayed','Emergent','Resi
     NOUN=['Otter','Heron','Falcon','Beaver','Lynx','Tortoise','Coyote','Ibis','Javelina','Roadrunner','Gila Monster','Quail'];
 function suggest(){ var h=hashf(PK); return ADJ[Math.floor(h*ADJ.length)]+' '+NOUN[Math.floor(hashf(PK+'n')*NOUN.length)]; }
 function save(extra){ if(!backend) return; var o={}; o[PK]=Object.assign({g:g(), ok:optIn()?1:0}, extra||{}); backend.mergeDocShard('polls', GID, {p:o}); }
-function saveD(r){ clearTimeout(saveT); saveT=setTimeout(function(){ var dd={}; dd[r]=ls(dKey(r))||''; save({d:dd}); }, 900); }
+/* Large classes (150+): saving on every nudge sent ~20 writes/s to each shared shard record. Now a structural edit
+   (a piece or arrow added or removed) saves after 0.8 s, a move-only edit after 4 s of quiet, and anything still
+   pending is sent at once when building ends, the clock runs out, or the tab is hidden. */
+var saveR=null, lastShape={};
+function shapeOf(s){ var p=String(s||'').split('|'); return (p[0]||'').split(';').map(function(x){ return x.split('@')[0]; }).sort().join(',')+'|'+(p[1]||''); }
+function flushD(){ if(saveR===null) return; clearTimeout(saveT); var r=saveR; saveR=null; var dd={}; dd[r]=ls(dKey(r))||''; save({d:dd}); }
+function saveD(r){ var sh=shapeOf(ls(dKey(r))), structural=lastShape[r]!==sh; lastShape[r]=sh;
+  saveR=r; clearTimeout(saveT); saveT=setTimeout(flushD, structural? 800 : 4000); }
+document.addEventListener('visibilitychange', function(){ if(document.visibilityState==='hidden') flushD(); });
+window.addEventListener('pagehide', flushD);
 
 /* ── timing: phones count down from when they first saw the phase (no clock skew) ── */
 function seen(key, dur){ var k='ll-seen:'+GID+':'+key, v=parseInt(ls(k),10); if(!(v>0)){ v=Date.now(); ls(k,String(v)); } return Math.max(0, dur*1000-(Date.now()-v)); }
@@ -4246,8 +4255,8 @@ SEC.addEventListener('click',function(e){
 window.__deckLiveReady.then(function(live){
   backend=live.backend; HOST=live.HOST; if(HOST) SEC.classList.add('host');
   var sub=(!HOST&&backend.subscribeMain)? backend.subscribeMain : backend.subscribeDoc;
-  sub.call(backend,'polls',GID,function(d){ state=d||{}; if(!HOST) delete state.p; else if(ph()!=='idle') assignNums(); render(); });
-  setInterval(function(){ partial(); if(!HOST) return; var p=ph();
+  sub.call(backend,'polls',GID,function(d){ state=d||{}; if(!HOST) delete state.p; else if(ph()!=='idle') assignNums(); if(ph()!=='build') flushD(); render(); });
+  setInterval(function(){ partial(); if(!HOST){ if(saveR!==null && ph()==='build' && state.dur && seen(g()+':build:'+rd(), state.dur)<=0) flushD(); return; } var p=ph();
     if(p==='build' && state.dur && seen(g()+':build:'+rd(), state.dur)<=0 && endedKey!==g()+':'+rd()){ endedKey=g()+':'+rd(); hRun(); }
     if(FAKES && p==='build') fakeBuild(); }, 400);
 });
